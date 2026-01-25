@@ -4,6 +4,7 @@ import type { DetailLevel } from '@/components/detail-level-selector'
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const MODEL = 'meta-llama/llama-3.2-3b-instruct:free'
 const MAX_RETRIES = 3
+const DEFAULT_MAX_TOKENS = 3000 // Safe limit for free models
 
 /**
  * Error thrown when all API keys have been exhausted or other OpenRouter errors occur
@@ -75,6 +76,171 @@ ${text}
 ---
 
 Crea un riassunto ben strutturato in formato Markdown.`
+}
+
+/**
+ * Get the user prompt for combining partial summaries
+ */
+function getCombinePrompt(summaries: string[]): string {
+  const combinedSummaries = summaries
+    .map((s, i) => `--- PARTE ${i + 1} ---\n${s}`)
+    .join('\n\n')
+
+  return `Combina i seguenti riassunti parziali in un unico riassunto coerente e ben strutturato.
+Elimina ripetizioni, unifica le sezioni simili e crea un documento fluido.
+Mantieni il formato Markdown.
+
+${combinedSummaries}
+
+Crea un riassunto unificato e ben strutturato.`
+}
+
+/**
+ * Estimate the number of tokens in a text.
+ * Uses a simple heuristic: ~4 characters per token for most languages.
+ * This is a rough estimate but works well for practical purposes.
+ */
+export function estimateTokens(text: string): number {
+  // Average ~4 characters per token for mixed content
+  // This is conservative and works for most Latin-based languages
+  return Math.ceil(text.length / 4)
+}
+
+/**
+ * Splits text into chunks of approximately maxTokens each.
+ * Tries to split at paragraph boundaries for better coherence.
+ *
+ * @param text - The text to split into chunks
+ * @param maxTokens - Maximum tokens per chunk (default: 3000)
+ * @returns Array of text chunks
+ */
+export function chunkText(text: string, maxTokens: number = DEFAULT_MAX_TOKENS): string[] {
+  const totalTokens = estimateTokens(text)
+
+  // If text fits in a single chunk, return as-is
+  if (totalTokens <= maxTokens) {
+    return [text]
+  }
+
+  const chunks: string[] = []
+  const maxCharsPerChunk = maxTokens * 4 // Convert tokens back to approximate chars
+
+  // Split by paragraphs first (double newline)
+  const paragraphs = text.split(/\n\s*\n/)
+
+  let currentChunk = ''
+
+  for (const paragraph of paragraphs) {
+    const paragraphWithSpacing = paragraph.trim()
+
+    if (!paragraphWithSpacing) {
+      continue
+    }
+
+    // If adding this paragraph would exceed the limit
+    if (currentChunk.length + paragraphWithSpacing.length + 2 > maxCharsPerChunk) {
+      // If current chunk has content, save it
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim())
+        currentChunk = ''
+      }
+
+      // If the paragraph itself is too long, split it by sentences
+      if (paragraphWithSpacing.length > maxCharsPerChunk) {
+        const sentenceChunks = splitLongParagraph(paragraphWithSpacing, maxCharsPerChunk)
+        chunks.push(...sentenceChunks.slice(0, -1))
+        currentChunk = sentenceChunks[sentenceChunks.length - 1] || ''
+      } else {
+        currentChunk = paragraphWithSpacing
+      }
+    } else {
+      // Add paragraph to current chunk
+      if (currentChunk) {
+        currentChunk += '\n\n' + paragraphWithSpacing
+      } else {
+        currentChunk = paragraphWithSpacing
+      }
+    }
+  }
+
+  // Don't forget the last chunk
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim())
+  }
+
+  return chunks.length > 0 ? chunks : [text]
+}
+
+/**
+ * Splits a long paragraph into smaller pieces at sentence boundaries
+ */
+function splitLongParagraph(paragraph: string, maxChars: number): string[] {
+  const chunks: string[] = []
+  // Split by sentence endings (. ! ? followed by space or end)
+  const sentences = paragraph.split(/(?<=[.!?])\s+/)
+
+  let currentChunk = ''
+
+  for (const sentence of sentences) {
+    if (currentChunk.length + sentence.length + 1 > maxChars) {
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim())
+        currentChunk = ''
+      }
+
+      // If a single sentence is too long, split by words
+      if (sentence.length > maxChars) {
+        const wordChunks = splitByWords(sentence, maxChars)
+        chunks.push(...wordChunks.slice(0, -1))
+        currentChunk = wordChunks[wordChunks.length - 1] || ''
+      } else {
+        currentChunk = sentence
+      }
+    } else {
+      if (currentChunk) {
+        currentChunk += ' ' + sentence
+      } else {
+        currentChunk = sentence
+      }
+    }
+  }
+
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim())
+  }
+
+  return chunks
+}
+
+/**
+ * Last resort: split by words when even sentences are too long
+ */
+function splitByWords(text: string, maxChars: number): string[] {
+  const chunks: string[] = []
+  const words = text.split(/\s+/)
+
+  let currentChunk = ''
+
+  for (const word of words) {
+    if (currentChunk.length + word.length + 1 > maxChars) {
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim())
+      }
+      currentChunk = word
+    } else {
+      if (currentChunk) {
+        currentChunk += ' ' + word
+      } else {
+        currentChunk = word
+      }
+    }
+  }
+
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim())
+  }
+
+  return chunks
 }
 
 interface OpenRouterResponse {
@@ -205,4 +371,111 @@ export async function generateSummary(
   }
 
   throw lastError || new OpenRouterError('Impossibile generare il riassunto dopo diversi tentativi')
+}
+
+/**
+ * Progress callback type for tracking chunking progress
+ */
+export type ChunkProgressCallback = (current: number, total: number) => void
+
+/**
+ * Generates a summary with automatic chunking for long texts.
+ * If the text exceeds the token limit, it will be split into chunks,
+ * each chunk will be summarized separately, and then combined into a final summary.
+ *
+ * @param text - The text to summarize
+ * @param detailLevel - The level of detail for the summary (brief, medium, detailed)
+ * @param maxTokens - Maximum tokens per chunk (default: 3000)
+ * @param onProgress - Optional callback for progress updates
+ * @returns The generated summary in Markdown format
+ * @throws OpenRouterError if API calls fail
+ */
+export async function generateSummaryWithChunking(
+  text: string,
+  detailLevel: DetailLevel,
+  maxTokens: number = DEFAULT_MAX_TOKENS,
+  onProgress?: ChunkProgressCallback
+): Promise<string> {
+  const chunks = chunkText(text, maxTokens)
+
+  // If only one chunk, use regular summary
+  if (chunks.length === 1) {
+    if (onProgress) {
+      onProgress(1, 1)
+    }
+    return generateSummary(text, detailLevel)
+  }
+
+  // Generate summary for each chunk
+  const partialSummaries: string[] = []
+
+  for (let i = 0; i < chunks.length; i++) {
+    if (onProgress) {
+      onProgress(i + 1, chunks.length)
+    }
+
+    const partialSummary = await generateSummary(chunks[i], detailLevel)
+    partialSummaries.push(partialSummary)
+  }
+
+  // Combine partial summaries into a final summary
+  const combinedText = partialSummaries.join('\n\n')
+
+  // If combined summaries are small enough, return them directly
+  if (estimateTokens(combinedText) <= maxTokens * 1.5) {
+    return combinedText
+  }
+
+  // Otherwise, use AI to combine and clean up the summaries
+  const combineMessages = [
+    {
+      role: 'system',
+      content: `Sei un assistente specializzato nel combinare riassunti.
+Mantieni il formato Markdown e la lingua originale del contenuto.
+Non aggiungere nuove informazioni, solo unifica e riorganizza il contenuto esistente.`
+    },
+    { role: 'user', content: getCombinePrompt(partialSummaries) }
+  ]
+
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const keyData = await getActiveKeyWithId()
+
+    if (!keyData) {
+      throw new OpenRouterError(
+        'Nessuna API key disponibile. Contatta l\'amministratore.',
+        'NO_API_KEY'
+      )
+    }
+
+    try {
+      const finalSummary = await callOpenRouter(keyData.key, combineMessages)
+      await markKeySuccess(keyData.id)
+      return finalSummary
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+      await markKeyFailed(keyData.id)
+
+      if (error instanceof OpenRouterError) {
+        const status = error.status
+        if (status === 401 || status === 429 || status === 402) {
+          continue
+        }
+      }
+
+      if (attempt === MAX_RETRIES - 1) {
+        break
+      }
+    }
+  }
+
+  // If combining fails, return the concatenated partial summaries
+  // This is a fallback to ensure the user gets something useful
+  if (lastError) {
+    console.error('Failed to combine summaries, returning concatenated version:', lastError)
+    return partialSummaries.join('\n\n---\n\n')
+  }
+
+  throw lastError || new OpenRouterError('Impossibile combinare i riassunti')
 }

@@ -311,3 +311,36 @@
 - API keys must be added to the database first via `addApiKey()` from lib/api-keys.ts
 - Optional: Set SITE_URL in .env for proper HTTP-Referer header (defaults to localhost:3000)
 - Next priority is US-011: Chunking per PDF lunghi
+
+---
+
+## 2026-01-25 - US-011: Chunking per PDF lunghi
+
+### What was done:
+- Added text chunking functionality to lib/openrouter.ts for handling long PDFs
+- Created `estimateTokens(text)` function that estimates tokens (~4 chars/token)
+- Created `chunkText(text, maxTokens)` function that intelligently splits text:
+  - First tries to split at paragraph boundaries (double newlines)
+  - Falls back to sentence boundaries if paragraphs are too long
+  - Falls back to word boundaries as last resort
+  - Default max is 3000 tokens (safe for free models)
+- Created `generateSummaryWithChunking(text, detailLevel, maxTokens, onProgress)` function:
+  - Automatically detects if text needs chunking
+  - Generates summary for each chunk individually
+  - Combines partial summaries using AI for coherent output
+  - Falls back to concatenated summaries if AI combining fails
+  - Supports progress callback for UI updates
+- Added `getCombinePrompt()` helper for the combining step
+- Exported `ChunkProgressCallback` type for progress tracking
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/openrouter.ts (updated - added chunking functionality)
+
+### Notes for next developer:
+- For long PDFs, use `generateSummaryWithChunking()` instead of `generateSummary()`
+- Import: `import { generateSummaryWithChunking, chunkText, estimateTokens, ChunkProgressCallback } from '@/lib/openrouter'`
+- The progress callback receives (current, total) for showing "Elaborando parte X di Y"
+- If combined summaries are small enough (< 1.5x maxTokens), they're returned directly without AI combining
+- If AI combining fails, concatenated summaries are returned with dividers as fallback
+- Next priority is US-012: API route per generazione riassunto
