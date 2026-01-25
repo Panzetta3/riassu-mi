@@ -599,3 +599,36 @@
 - Explanations are only shown for incorrect answers to focus user attention on learning
 - Score percentage determines the motivational message and color scheme
 - Next priority is US-019: Download riassunto come PDF
+
+---
+
+## 2026-01-25 - US-019: Download riassunto come PDF
+
+### What was done:
+- Installed jspdf for client-side PDF generation
+- Created lib/pdf-generator.ts with PDF generation utility
+- Implemented generateSummaryPdf() function that:
+  - Converts Markdown to plain text with formatting preserved
+  - Creates A4 portrait PDF with proper margins
+  - Includes title, file name, detail level (Italian), and date
+  - Formats content with headers (bold) and bullet points
+  - Handles page breaks automatically
+  - Adds footer with page numbers ("Generato con Riassu.mi - Pagina X di Y")
+- Updated summary-content.tsx to call generateSummaryPdf on button click
+- Updated page.tsx to pass additional props (pdfName, detailLevel, createdAt)
+- File naming: riassunto-[sanitized-title]-[date].pdf
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (added jspdf dependency)
+- lib/pdf-generator.ts (new - PDF generation utility)
+- app/summary/[id]/summary-content.tsx (updated - connected download button)
+- app/summary/[id]/page.tsx (updated - added props for PDF metadata)
+
+### Notes for next developer:
+- Import PDF generator: `import { generateSummaryPdf } from '@/lib/pdf-generator'`
+- The function takes SummaryPdfData object with title, pdfName, detailLevel, createdAt, content
+- Markdown is converted to plain text - complex formatting is simplified
+- PDF uses Helvetica font (built into jsPDF, no external fonts needed)
+- The sanitized filename removes special characters and limits to 50 chars
+- Next priority is US-020: Download quiz come PDF

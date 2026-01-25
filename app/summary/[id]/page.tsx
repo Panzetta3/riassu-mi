@@ -113,7 +113,14 @@ export default async function SummaryPage({ params }: SummaryPageProps) {
         </div>
 
         {/* Summary Content with Markdown */}
-        <SummaryContent content={summary.content} summaryId={summary.id} title={summary.title} />
+        <SummaryContent
+          content={summary.content}
+          summaryId={summary.id}
+          title={summary.title}
+          pdfName={summary.pdf_name}
+          detailLevel={summary.detail_level}
+          createdAt={summary.created_at.toISOString()}
+        />
       </div>
     </div>
   );

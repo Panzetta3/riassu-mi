@@ -3,17 +3,33 @@
 import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 import { Button, Card, CardContent } from "@/components/ui";
+import { generateSummaryPdf } from "@/lib/pdf-generator";
 
 interface SummaryContentProps {
   content: string;
   summaryId: string;
   title: string;
+  pdfName: string;
+  detailLevel: string;
+  createdAt: string;
 }
 
-export function SummaryContent({ content, summaryId, title }: SummaryContentProps) {
+export function SummaryContent({
+  content,
+  summaryId,
+  title,
+  pdfName,
+  detailLevel,
+  createdAt,
+}: SummaryContentProps) {
   const handleDownloadPdf = () => {
-    // TODO: Implement PDF download in US-019
-    alert("La funzionalità di download PDF sarà disponibile prossimamente.");
+    generateSummaryPdf({
+      title,
+      pdfName,
+      detailLevel,
+      createdAt: new Date(createdAt),
+      content,
+    });
   };
 
   return (

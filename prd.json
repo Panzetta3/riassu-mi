@@ -317,8 +317,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 19,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Installed jspdf 3.x for client-side PDF generation. Created lib/pdf-generator.ts with generateSummaryPdf() function that converts Markdown to plain text and generates formatted A4 PDF. PDF includes: title, file name, detail level (in Italian), creation date, formatted content with headers and bullet points, and page numbers. File named riassunto-[sanitized-title]-[date].pdf. Updated summary-content.tsx with functional download button. Typecheck passes."
     },
     {
       "id": "US-020",
