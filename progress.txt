@@ -845,3 +845,41 @@
 - The detailLevelLabels mapping is duplicated from /summary/[id]/page.tsx - could be extracted to a shared utility if more pages need it
 - Currently uses only SELECT for efficiency (only fetches needed fields, not full content)
 - Next priority is US-026: Eliminazione riassunto
+
+---
+
+## 2026-01-25 - US-026: Eliminazione riassunto
+
+### What was done:
+- Created DELETE API route at app/api/summary/[id]/route.ts
+- API endpoint verifies:
+  - User is authenticated (401 if not)
+  - Summary exists (404 if not)
+  - User owns the summary (403 if not)
+- Deletes summary and associated quizzes (cascade delete via Prisma schema)
+- Created SummaryList client component at app/dashboard/summary-list.tsx
+- Features implemented:
+  - Delete button (trash icon) on each summary card
+  - Positioned to the right, doesn't interfere with card navigation
+  - Hover effect shows red color on the delete button
+  - Confirmation modal with warning icon
+  - Modal text: "Questa azione eliminerà anche il quiz associato e non può essere annullata."
+  - Loading state during deletion with spinner
+  - Error display in modal if deletion fails
+  - List updates immediately after successful deletion
+  - Calls router.refresh() to sync server-side data
+- Updated dashboard page to use the new SummaryList component
+- Responsive design with dark mode support
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/api/summary/[id]/route.ts (new - DELETE endpoint for summary deletion)
+- app/dashboard/summary-list.tsx (new - client component with delete functionality)
+- app/dashboard/page.tsx (updated - uses SummaryList component)
+
+### Notes for next developer:
+- The SummaryList component manages local state for optimistic UI updates
+- Modal uses fixed positioning with z-50 to overlay the page
+- Delete button uses e.preventDefault() and e.stopPropagation() to prevent Link navigation
+- Error messages from API are displayed in the modal
+- Next priority is US-027: Header con navigazione e stato auth
