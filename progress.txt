@@ -488,3 +488,32 @@
 - Each question has an `explanation` field explaining why the answer is correct
 - The parser handles markdown code blocks and extra text from AI responses
 - Next priority is US-016: API route per generazione quiz
+
+---
+
+## 2026-01-25 - US-016: API route per generazione quiz
+
+### What was done:
+- Created app/api/quiz/route.ts with POST endpoint for quiz generation
+- Endpoint accepts JSON body with summaryId parameter
+- Fetches summary from database using Prisma
+- Validates summary exists and has sufficient content (minimum 100 characters)
+- Calls generateQuiz() from lib/openrouter.ts to generate quiz questions
+- Saves Quiz to database with questions stored as JSON string
+- Returns JSON response with quizId and questions array
+- Proper error handling with Italian user-friendly messages:
+  - 400: Invalid request (missing summaryId, content too short)
+  - 404: Summary not found
+  - 500: OpenRouter API errors or internal server errors
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/api/quiz/route.ts (new - API endpoint for quiz generation)
+
+### Notes for next developer:
+- Call the API: `POST /api/quiz` with JSON body `{ "summaryId": "..." }`
+- Response format: `{ quizId: string, questions: QuizQuestion[] }`
+- The questions array contains 10 questions (~7 multiple choice, ~3 true/false)
+- Quiz is stored in database linked to the summary via summary_id foreign key
+- The endpoint can be called from the "Genera Quiz" button on /summary/[id] page
+- Next priority is US-017: Interfaccia quiz interattivo

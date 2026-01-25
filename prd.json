@@ -265,8 +265,8 @@
         "Typecheck passa"
       ],
       "priority": 16,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created app/api/quiz/route.ts with POST endpoint. Accepts JSON body with summaryId parameter. Fetches summary from database using Prisma, validates content length (min 100 chars). Calls generateQuiz() from lib/openrouter.ts to generate 10 questions. Saves Quiz to database with questions as JSON string. Returns {quizId, questions} on success. Proper error handling with Italian messages for invalid requests (400), not found (404), and server errors (500). Typecheck passes."
     },
     {
       "id": "US-017",
