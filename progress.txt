@@ -60,3 +60,36 @@
 - Run `npx prisma studio` to view/edit data
 - Run `npx prisma migrate dev` to apply schema changes
 - Next priority is US-003: Servizio gestione API key con failover
+
+---
+
+## 2026-01-25 - US-003: Servizio gestione API key con failover
+
+### What was done:
+- Created lib/api-keys.ts with complete API key management service
+- Implemented AES-256-GCM encryption/decryption for secure key storage
+- Functions implemented:
+  - `encryptKey(plainKey)` - Encrypts API key with AES-256-GCM
+  - `decryptKey(encryptedData)` - Decrypts stored API key
+  - `getActiveKey()` - Returns first active, non-disabled key (decrypted)
+  - `getActiveKeyWithId()` - Returns key with ID for tracking success/failure
+  - `markKeyFailed(keyId)` - Increments fail_count, disables for 1 hour if > 5 failures
+  - `markKeySuccess(keyId)` - Resets fail_count and clears disabled_until
+  - `addApiKey(plainKey, provider)` - Adds new encrypted API key to database
+  - `deactivateKey(keyId)` - Soft deletes a key
+  - `reactivateKey(keyId)` - Reactivates a disabled/deactivated key
+- Encryption key is read from ENCRYPTION_KEY environment variable
+- Added ENCRYPTION_KEY to .env file (with placeholder value)
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/api-keys.ts (new - API key management service)
+- .env (added ENCRYPTION_KEY variable)
+
+### Notes for next developer:
+- Import API key functions: `import { getActiveKey, markKeyFailed, markKeySuccess } from '@/lib/api-keys'`
+- For failover pattern: use `getActiveKeyWithId()`, then `markKeyFailed(id)` or `markKeySuccess(id)`
+- Keys are automatically load-balanced (least recently used first)
+- IMPORTANT: Change ENCRYPTION_KEY in production to a strong random value
+- Use `addApiKey(key, 'openrouter')` to add new API keys to the database
+- Next priority is US-004: Componenti UI base
