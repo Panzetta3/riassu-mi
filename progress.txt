@@ -277,3 +277,37 @@
 - The detailLevel state will be used in US-010 (OpenRouter service) to select the appropriate prompt
 - The selector appears only after a valid PDF file is selected
 - Next priority is US-010: Servizio OpenRouter per riassunti
+
+---
+
+## 2026-01-25 - US-010: Servizio OpenRouter per riassunti
+
+### What was done:
+- Created lib/openrouter.ts with complete OpenRouter AI integration
+- Implemented `generateSummary(text, detailLevel)` function
+- Uses free model: meta-llama/llama-3.2-3b-instruct:free
+- Created Italian system prompts for each detail level:
+  - Brief: bullet points dei concetti chiave
+  - Medium: 1-2 paragrafi per sezione
+  - Detailed: spiegazioni complete con esempi
+- Integrated with API key failover system:
+  - Uses `getActiveKeyWithId()` to get key with tracking ID
+  - Calls `markKeyFailed(id)` on API errors
+  - Calls `markKeySuccess(id)` on successful response
+  - Retries up to 3 times with different keys on auth/rate limit errors (401, 429, 402)
+- Returns summary in Markdown format
+- Created `OpenRouterError` class for error handling with code and status
+- Supports SITE_URL environment variable for HTTP-Referer header
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/openrouter.ts (new - OpenRouter AI integration service)
+
+### Notes for next developer:
+- Import the function: `import { generateSummary, OpenRouterError } from '@/lib/openrouter'`
+- The function is async and returns a Promise<string> (Markdown content)
+- DetailLevel type is imported from '@/components/detail-level-selector'
+- Make sure ENCRYPTION_KEY is set in .env for API key decryption
+- API keys must be added to the database first via `addApiKey()` from lib/api-keys.ts
+- Optional: Set SITE_URL in .env for proper HTTP-Referer header (defaults to localhost:3000)
+- Next priority is US-011: Chunking per PDF lunghi
