@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { FileUpload, MAX_FILE_SIZE } from "@/components/file-upload";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
+import { DetailLevelSelector, DetailLevel } from "@/components/detail-level-selector";
 import { parsePageRanges } from "@/lib/utils";
 
 function validateFile(file: File): string | null {
@@ -41,6 +42,7 @@ export default function UploadPage() {
   const [excludePagesInput, setExcludePagesInput] = useState("");
   const [excludePagesError, setExcludePagesError] = useState<string | null>(null);
   const [excludedPages, setExcludedPages] = useState<number[]>([]);
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>("medium");
 
   // Load page count when file is selected
   useEffect(() => {
@@ -198,6 +200,12 @@ export default function UploadPage() {
                     )}
                   </div>
                 )}
+
+                {/* Detail Level Selector */}
+                <DetailLevelSelector
+                  value={detailLevel}
+                  onChange={setDetailLevel}
+                />
               </div>
             )}
 

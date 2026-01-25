@@ -248,3 +248,32 @@
 - pdf-parse is used server-side for text extraction (runs in Node.js)
 - The parsePageRanges function in lib/utils.ts validates and parses the input
 - Next priority is US-009: Selector livello dettaglio riassunto
+
+---
+
+## 2026-01-25 - US-009: Selector livello dettaglio riassunto
+
+### What was done:
+- Created DetailLevelSelector component in components/detail-level-selector.tsx
+- Component displays 3 options with radio-button style cards: Breve, Medio, Dettagliato
+- Each option shows its description visibly (better UX than hidden tooltips)
+- Descriptions match PRD requirements:
+  - Breve: "Bullet points dei concetti chiave"
+  - Medio: "1-2 paragrafi per sezione"
+  - Dettagliato: "Spiegazioni complete con esempi"
+- Default value is "Medio"
+- Integrated into /upload page with state management
+- Responsive grid layout (stacked on mobile, 3 columns on larger screens)
+- Dark mode support with appropriate colors
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/detail-level-selector.tsx (new - DetailLevelSelector component)
+- app/upload/page.tsx (added DetailLevelSelector import and usage)
+
+### Notes for next developer:
+- Import the component: `import { DetailLevelSelector, DetailLevel } from '@/components/detail-level-selector'`
+- DetailLevel type is "brief" | "medium" | "detailed"
+- The detailLevel state will be used in US-010 (OpenRouter service) to select the appropriate prompt
+- The selector appears only after a valid PDF file is selected
+- Next priority is US-010: Servizio OpenRouter per riassunti

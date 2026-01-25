@@ -150,8 +150,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created DetailLevelSelector component with radio-button style cards showing 3 options (Breve, Medio, Dettagliato). Each option displays its description visibly. Default is 'Medio'. Component integrated into /upload page, state managed with useState. Responsive design with grid layout. Typecheck passes."
     },
     {
       "id": "US-010",
