@@ -127,3 +127,31 @@
 - Select usage: `<Select options={[{value: 'a', label: 'A'}]} label="Choose" />`
 - Spinner sizes: `<Spinner size="sm|md|lg" />`
 - Next priority is US-005: Homepage con hero section
+
+---
+
+## 2026-01-25 - US-005: Homepage con hero section
+
+### What was done:
+- Created responsive homepage with hero section
+- Hero section features "Riassu.mi" title with accent color on ".mi"
+- Added brief description explaining the AI-powered PDF summarization
+- CTA button "Carica PDF" links to /upload
+- "Come funziona" section with 3 steps: Carica, Riassumi, Quiz
+- Each step has an icon, title, and description
+- Mobile-first responsive design using Tailwind CSS
+- Dark mode support throughout
+- Updated app metadata (title and description)
+- Added simple footer with copyright
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/page.tsx (complete rewrite - homepage with hero and steps)
+- app/layout.tsx (updated metadata for app branding)
+
+### Notes for next developer:
+- Homepage uses the Button component from @/components/ui
+- Design uses gradient background from blue-50 to white
+- Responsive breakpoints: default (mobile), sm:, md:
+- The /upload route is not yet created - that's US-006
+- Next priority is US-006: Upload PDF con drag & drop

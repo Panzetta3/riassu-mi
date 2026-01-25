@@ -82,8 +82,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created responsive homepage with hero section featuring 'Riassu.mi' title and AI-powered description. CTA button links to /upload. 'Come funziona' section with 3 steps: Carica (upload), Riassumi (AI summary), Quiz (test knowledge). Mobile-first responsive design with Tailwind CSS. Updated app metadata. Typecheck passes."
     },
     {
       "id": "US-006",
