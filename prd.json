@@ -1,0 +1,508 @@
+{
+  "project": "Riassu.mi",
+  "branchName": "ralph/pdf-study-summarizer",
+  "description": "Web app per riassumere PDF di studio con AI e generare quiz di verifica. Supporta multiple API key OpenRouter con failover automatico.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Setup progetto Next.js",
+      "description": "Come sviluppatore, ho bisogno della struttura base del progetto Next.js per iniziare lo sviluppo.",
+      "acceptanceCriteria": [
+        "Inizializzare progetto Next.js 14+ con App Router",
+        "Configurare TypeScript",
+        "Configurare Tailwind CSS",
+        "Creare struttura cartelle: app/, components/, lib/, types/",
+        "Typecheck passa"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Completed: Next.js 16.1.4 with App Router, TypeScript 5, Tailwind CSS 4. Folder structure created with app/, components/, lib/, types/. Typecheck passes."
+    },
+    {
+      "id": "US-002",
+      "title": "Setup Prisma con schema base",
+      "description": "Come sviluppatore, ho bisogno del database SQLite con Prisma ORM configurato.",
+      "acceptanceCriteria": [
+        "Installare Prisma e configurare SQLite",
+        "Creare schema User: id, email, password_hash, created_at",
+        "Creare schema Summary: id, user_id (nullable), title, content, detail_level, pdf_name, created_at",
+        "Creare schema Quiz: id, summary_id, questions (JSON), created_at",
+        "Creare schema ApiKey: id, key_encrypted, provider, is_active, last_used, fail_count, disabled_until",
+        "Eseguire migration con successo",
+        "Typecheck passa"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Servizio gestione API key con failover",
+      "description": "Come sviluppatore, ho bisogno di un servizio che gestisca multiple API key con failover automatico.",
+      "acceptanceCriteria": [
+        "Creare lib/api-keys.ts con funzioni: getActiveKey(), markKeyFailed(), markKeySuccess()",
+        "getActiveKey() ritorna la prima key attiva non disabilitata",
+        "markKeyFailed() incrementa fail_count e disabilita per 1 ora se fail_count > 5",
+        "Criptazione/decriptazione key con crypto di Node.js",
+        "Chiave di criptazione letta da variabile ambiente ENCRYPTION_KEY",
+        "Typecheck passa"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Componenti UI base",
+      "description": "Come sviluppatore, ho bisogno dei componenti UI riutilizzabili per costruire l'interfaccia.",
+      "acceptanceCriteria": [
+        "Creare components/ui/button.tsx con varianti: primary, secondary, ghost",
+        "Creare components/ui/card.tsx per contenitori",
+        "Creare components/ui/input.tsx per campi testo",
+        "Creare components/ui/select.tsx per dropdown",
+        "Creare components/ui/spinner.tsx per loading",
+        "Tutti i componenti usano Tailwind CSS",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Homepage con hero section",
+      "description": "Come visitatore, voglio vedere una homepage che spiega cosa fa l'app.",
+      "acceptanceCriteria": [
+        "Hero section con titolo 'Riassu.mi' e descrizione breve",
+        "Pulsante CTA 'Carica PDF' che porta a /upload",
+        "Sezione 'Come funziona' con 3 step: Carica, Riassumi, Quiz",
+        "Design responsive mobile-first",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Upload PDF con drag & drop",
+      "description": "Come studente, voglio caricare un PDF tramite drag & drop o click.",
+      "acceptanceCriteria": [
+        "Creare pagina /upload con componente FileUpload",
+        "Supporto drag & drop e click per selezionare file",
+        "Validazione: solo file .pdf, max 20MB",
+        "Mostra nome file e dimensione dopo selezione",
+        "Messaggio errore se file non valido",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Estrazione testo da PDF",
+      "description": "Come sviluppatore, ho bisogno di estrarre il testo dal PDF caricato.",
+      "acceptanceCriteria": [
+        "Installare e configurare pdf-parse",
+        "Creare lib/pdf-parser.ts con funzione extractText(buffer, excludePages?)",
+        "La funzione ritorna array di { pageNumber, text } per ogni pagina",
+        "Supporto esclusione pagine tramite parametro excludePages (es. [1,2,3,15])",
+        "Gestione errore se PDF non contiene testo estraibile",
+        "Typecheck passa"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Input selezione pagine da escludere",
+      "description": "Come studente, voglio specificare quali pagine saltare dal riassunto.",
+      "acceptanceCriteria": [
+        "Aggiungere input testuale nella pagina /upload",
+        "Formato accettato: '1-3, 5, 10-15' (range e singole pagine)",
+        "Validazione formato con messaggio errore se invalido",
+        "Funzione parsePageRanges() in lib/utils.ts che converte stringa in array numeri",
+        "Preview: mostra 'Pagine escluse: X' e 'Pagine da processare: Y'",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Selector livello dettaglio riassunto",
+      "description": "Come studente, voglio scegliere quanto dettagliato deve essere il riassunto.",
+      "acceptanceCriteria": [
+        "Aggiungere select con 3 opzioni nella pagina /upload: Breve, Medio, Dettagliato",
+        "Tooltip/descrizione per ogni opzione che spiega cosa aspettarsi",
+        "Breve: 'Bullet points dei concetti chiave'",
+        "Medio: '1-2 paragrafi per sezione'",
+        "Dettagliato: 'Spiegazioni complete con esempi'",
+        "Default selezionato: Medio",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Servizio OpenRouter per riassunti",
+      "description": "Come sviluppatore, ho bisogno di un servizio che chiami OpenRouter per generare riassunti.",
+      "acceptanceCriteria": [
+        "Creare lib/openrouter.ts con funzione generateSummary(text, detailLevel)",
+        "Usare modello gratuito: meta-llama/llama-3.2-3b-instruct:free",
+        "Prompt diverso per ogni livello di dettaglio",
+        "Integrazione con servizio API key per failover automatico",
+        "Se API call fallisce, markKeyFailed() e riprova con altra key",
+        "Ritorna riassunto in formato Markdown",
+        "Typecheck passa"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Chunking per PDF lunghi",
+      "description": "Come sviluppatore, ho bisogno di gestire PDF che superano il context window dell'AI.",
+      "acceptanceCriteria": [
+        "Creare funzione chunkText(text, maxTokens) in lib/openrouter.ts",
+        "Dividere testo in chunk di ~3000 token (sicuro per modelli free)",
+        "Generare riassunto per ogni chunk",
+        "Combinare riassunti parziali in riassunto finale",
+        "Typecheck passa"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "API route per generazione riassunto",
+      "description": "Come sviluppatore, ho bisogno di un endpoint API per processare il PDF e generare il riassunto.",
+      "acceptanceCriteria": [
+        "Creare app/api/summarize/route.ts",
+        "Accetta POST con: file PDF (FormData), excludePages (string), detailLevel (string)",
+        "Estrae testo dal PDF escludendo pagine specificate",
+        "Chiama OpenRouter per generare riassunto",
+        "Salva Summary nel database (user_id null per guest)",
+        "Ritorna JSON con summaryId e content",
+        "Typecheck passa"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Pagina risultato riassunto",
+      "description": "Come studente, voglio vedere il riassunto generato in una pagina dedicata.",
+      "acceptanceCriteria": [
+        "Creare pagina /summary/[id] che mostra il riassunto",
+        "Rendering Markdown con formattazione (titoli, liste, grassetto)",
+        "Mostra titolo PDF e livello dettaglio usato",
+        "Pulsante 'Genera Quiz' per procedere al quiz",
+        "Pulsante 'Scarica PDF' per download",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Progress indicator durante generazione",
+      "description": "Come studente, voglio vedere un indicatore di progresso mentre il riassunto viene generato.",
+      "acceptanceCriteria": [
+        "Mostrare spinner con messaggio 'Analizzando il PDF...'",
+        "Aggiornare messaggio: 'Generando riassunto...'",
+        "Se chunking: mostrare 'Elaborando parte X di Y...'",
+        "Animazione fluida senza blocchi UI",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Servizio generazione quiz",
+      "description": "Come sviluppatore, ho bisogno di generare quiz basati sul riassunto.",
+      "acceptanceCriteria": [
+        "Creare funzione generateQuiz(summaryContent) in lib/openrouter.ts",
+        "Generare 10 domande: ~7 multiple choice (4 opzioni), ~3 vero/falso",
+        "Output JSON: array di { question, type, options?, correctAnswer, explanation }",
+        "Prompt che richiede domande nella lingua del contenuto",
+        "Integrazione failover API key",
+        "Typecheck passa"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "API route per generazione quiz",
+      "description": "Come sviluppatore, ho bisogno di un endpoint API per generare il quiz.",
+      "acceptanceCriteria": [
+        "Creare app/api/quiz/route.ts",
+        "Accetta POST con: summaryId",
+        "Recupera summary dal database",
+        "Chiama generateQuiz() con il contenuto",
+        "Salva Quiz nel database collegato al Summary",
+        "Ritorna JSON con quizId e questions",
+        "Typecheck passa"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Interfaccia quiz interattivo",
+      "description": "Come studente, voglio completare il quiz una domanda alla volta.",
+      "acceptanceCriteria": [
+        "Creare pagina /quiz/[id] con interfaccia quiz",
+        "Mostra una domanda alla volta con numero (1/10)",
+        "Per multiple choice: 4 pulsanti opzione",
+        "Per vero/falso: 2 pulsanti Vero/Falso",
+        "Selezione risposta evidenziata visivamente",
+        "Navigazione: pulsanti Indietro/Avanti",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Schermata risultati quiz",
+      "description": "Come studente, voglio vedere il mio punteggio e le risposte corrette.",
+      "acceptanceCriteria": [
+        "Pulsante 'Verifica Risposte' visibile dopo aver risposto a tutte le domande",
+        "Schermata risultati con punteggio X/10",
+        "Lista domande con indicatore verde (corretta) o rosso (sbagliata)",
+        "Per ogni errore: mostra risposta data, risposta corretta, spiegazione",
+        "Pulsante 'Ripeti Quiz' per ricominciare",
+        "Pulsante 'Torna al Riassunto'",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Download riassunto come PDF",
+      "description": "Come studente, voglio scaricare il riassunto in formato PDF.",
+      "acceptanceCriteria": [
+        "Installare jspdf per generazione PDF client-side",
+        "Pulsante 'Scarica Riassunto' nella pagina /summary/[id]",
+        "PDF include: titolo, data, livello dettaglio, contenuto formattato",
+        "Nome file: riassunto-[titolo]-[data].pdf",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Download quiz come PDF",
+      "description": "Come studente, voglio scaricare il quiz in formato PDF.",
+      "acceptanceCriteria": [
+        "Pulsante 'Scarica Quiz' nella pagina risultati",
+        "PDF include: domande numerate con opzioni",
+        "Risposte corrette in sezione separata a fine documento",
+        "Nome file: quiz-[titolo]-[data].pdf",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Form registrazione utente",
+      "description": "Come studente, voglio creare un account per salvare i miei riassunti.",
+      "acceptanceCriteria": [
+        "Creare pagina /register con form",
+        "Campi: email, password, conferma password",
+        "Validazione: email formato valido, password min 8 caratteri, password corrispondono",
+        "Hash password con bcrypt prima di salvare",
+        "Redirect a /login dopo registrazione",
+        "Messaggio errore se email già esistente",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Form login e gestione sessione",
+      "description": "Come studente registrato, voglio accedere al mio account.",
+      "acceptanceCriteria": [
+        "Creare pagina /login con form email + password",
+        "Verifica credenziali con bcrypt.compare()",
+        "Creare sessione con cookie HTTP-only (no localStorage)",
+        "Cookie contiene user ID firmato con secret da env",
+        "Redirect a /dashboard dopo login",
+        "Messaggio errore per credenziali errate",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Middleware autenticazione",
+      "description": "Come sviluppatore, ho bisogno di proteggere le route che richiedono login.",
+      "acceptanceCriteria": [
+        "Creare middleware.ts che verifica cookie sessione",
+        "Funzione getSession() in lib/auth.ts che ritorna user o null",
+        "Route /dashboard protetta: redirect a /login se non autenticato",
+        "Route /upload accessibile a tutti (guest e logged)",
+        "Typecheck passa"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Associare riassunti all'utente loggato",
+      "description": "Come sviluppatore, ho bisogno di collegare i riassunti all'utente se loggato.",
+      "acceptanceCriteria": [
+        "Modificare API /api/summarize per leggere sessione",
+        "Se utente loggato: salvare user_id nel Summary",
+        "Se guest: user_id rimane null",
+        "Typecheck passa"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Dashboard utente con storico",
+      "description": "Come studente loggato, voglio vedere tutti i miei riassunti passati.",
+      "acceptanceCriteria": [
+        "Creare pagina /dashboard",
+        "Lista card con: titolo PDF, data creazione, livello dettaglio",
+        "Ordinamento per data decrescente",
+        "Click su card apre /summary/[id]",
+        "Messaggio 'Nessun riassunto' se lista vuota",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Eliminazione riassunto",
+      "description": "Come studente, voglio poter eliminare un riassunto dalla mia dashboard.",
+      "acceptanceCriteria": [
+        "Pulsante 'Elimina' su ogni card nella dashboard",
+        "Modal di conferma: 'Sei sicuro? Questa azione eliminerà anche il quiz associato'",
+        "API DELETE /api/summary/[id] che elimina Summary e Quiz collegato",
+        "Verifica che l'utente sia proprietario del riassunto",
+        "Aggiornamento lista dopo eliminazione",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "Header con navigazione e stato auth",
+      "description": "Come utente, voglio un header che mostri navigazione e stato login.",
+      "acceptanceCriteria": [
+        "Creare components/header.tsx",
+        "Logo 'Riassu.mi' che linka a homepage",
+        "Se guest: pulsanti 'Accedi' e 'Registrati'",
+        "Se loggato: link 'Dashboard' e pulsante 'Esci'",
+        "Logout cancella cookie e redirect a homepage",
+        "Header presente in tutte le pagine (layout)",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "Pagina admin gestione API key",
+      "description": "Come admin, voglio poter aggiungere e rimuovere API key OpenRouter.",
+      "acceptanceCriteria": [
+        "Creare pagina /admin/api-keys (protetta, accessibile solo se ADMIN_EMAIL in env)",
+        "Form per aggiungere nuova API key",
+        "Lista key esistenti con: ultimi 4 caratteri, stato (attiva/disabilitata), fail_count",
+        "Pulsante per eliminare key",
+        "Pulsante per riattivare key disabilitata",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Toast notifications",
+      "description": "Come utente, voglio vedere notifiche per successo ed errori.",
+      "acceptanceCriteria": [
+        "Creare components/toast.tsx e context ToastProvider",
+        "Funzione toast.success(message) e toast.error(message)",
+        "Toast appare in alto a destra, scompare dopo 4 secondi",
+        "Colore verde per success, rosso per error",
+        "Usare toast per: upload completato, errore API, login/logout",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-030",
+      "title": "Gestione errori e pagina 404",
+      "description": "Come utente, voglio messaggi di errore chiari e una pagina 404.",
+      "acceptanceCriteria": [
+        "Creare app/not-found.tsx con design coerente",
+        "Messaggio 'Pagina non trovata' con link a homepage",
+        "Error boundary per errori React con messaggio user-friendly",
+        "API errors ritornano JSON { error: 'messaggio leggibile' }",
+        "Mai mostrare stack trace all'utente",
+        "Typecheck passa",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

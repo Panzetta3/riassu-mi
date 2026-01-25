@@ -1,0 +1,27 @@
+## 2026-01-25 - US-001: Setup progetto Next.js
+
+### What was done:
+- Initialized Next.js 16.1.4 project with App Router
+- Configured TypeScript 5
+- Configured Tailwind CSS 4
+- Created folder structure: app/, components/, lib/, types/
+- Added npm scripts: typecheck, test
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (renamed to "riassumi", added typecheck and test scripts)
+- app/ (layout.tsx, page.tsx, globals.css, favicon.ico)
+- components/.gitkeep
+- lib/.gitkeep
+- types/.gitkeep
+- tsconfig.json
+- next.config.ts
+- postcss.config.mjs
+- eslint.config.mjs
+- .gitignore
+
+### Notes for next developer:
+- The project is ready for feature development
+- Next priority is US-002: Setup Prisma with base schema
+- Run `npm run dev` to start development server
+- Run `npm run typecheck` to check types
