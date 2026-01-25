@@ -351,8 +351,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /register page with registration form. Installed bcrypt for password hashing. API route at /api/auth/register validates email format, password length (min 8 chars), checks for duplicate emails (409 error), hashes password with bcrypt (10 rounds), and creates user in database. Client-side form has real-time validation for email format, password length, and password confirmation match. Loading state with spinner during submission. Redirects to /login?registered=true on success. Italian error messages throughout. Responsive design with dark mode support. Typecheck passes."
     },
     {
       "id": "US-022",

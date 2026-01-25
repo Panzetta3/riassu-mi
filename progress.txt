@@ -666,3 +666,44 @@
 - Questions have estimated height check for page breaks
 - Both summary and quiz PDF generators share the same file
 - Next priority is US-021: Form registrazione utente
+
+---
+
+## 2026-01-25 - US-021: Form registrazione utente
+
+### What was done:
+- Installed bcrypt for secure password hashing
+- Created API route at app/api/auth/register/route.ts with:
+  - Email format validation using regex
+  - Password length validation (minimum 8 characters)
+  - Duplicate email check with 409 Conflict response
+  - Password hashing with bcrypt (10 rounds)
+  - User creation in database with Prisma
+  - Italian error messages for all validation failures
+- Created /register page with registration form:
+  - Three input fields: email, password, confirm password
+  - Client-side validation before form submission
+  - Real-time error clearing when user corrects input
+  - Loading state with spinner during API call
+  - Error display for API errors
+  - Redirect to /login?registered=true on success
+- Form validation includes:
+  - Email: required, valid format
+  - Password: required, minimum 8 characters
+  - Confirm Password: required, must match password
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (added bcrypt, @types/bcrypt dependencies)
+- app/api/auth/register/route.ts (new - registration API endpoint)
+- app/register/page.tsx (new - registration form page)
+
+### Notes for next developer:
+- The registration form redirects to /login?registered=true which can show a success message (once login page is created)
+- Email is stored in lowercase for consistency
+- bcrypt with 10 rounds provides good security/performance balance
+- The API uses 409 Conflict status for duplicate email (standard HTTP code)
+- The login page (/login) referenced in the form link doesn't exist yet - that's US-022
+- Next priority is US-022: Form login e gestione sessione
