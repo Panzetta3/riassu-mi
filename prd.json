@@ -199,8 +199,8 @@
         "Typecheck passa"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created app/api/summarize/route.ts with POST endpoint. Accepts FormData with file (PDF), excludePages (optional string), and detailLevel (required: brief/medium/detailed). Validates file type (.pdf), size (max 20MB), and detail level. Uses pdf-parser to extract text with page exclusion support. Calls generateSummaryWithChunking for AI summary generation with automatic chunking for long PDFs. Saves Summary to database with user_id null for guest users. Returns JSON {summaryId, content}. Proper error handling with user-friendly Italian messages. Typecheck passes."
     },
     {
       "id": "US-013",
