@@ -810,3 +810,38 @@
 - The getSession() function handles all session validation including signature verification and expiry
 - No changes needed to the frontend - authentication is transparent to the user
 - Next priority is US-025: Dashboard utente con storico
+
+---
+
+## 2026-01-25 - US-025: Dashboard utente con storico
+
+### What was done:
+- Created /dashboard page at app/dashboard/page.tsx
+- Server component that fetches user summaries using getSession() for authentication
+- Redirects to /login if not authenticated (with redirect query param)
+- Fetches summaries filtered by user_id, ordered by created_at descending
+- Displays summary cards with:
+  - Title (links to /summary/[id])
+  - PDF filename with document icon
+  - Detail level with Italian labels (Breve/Medio/Dettagliato)
+  - Creation date formatted in Italian locale
+  - Arrow icon indicating clickability
+- Empty state when no summaries exist:
+  - Large document icon
+  - "Nessun riassunto" heading
+  - Descriptive text encouraging first upload
+  - CTA button to upload first PDF
+- "Carica nuovo PDF" button at top of page
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/dashboard/page.tsx (new - dashboard page with summary list)
+
+### Notes for next developer:
+- The dashboard is already protected by middleware.ts (set up in US-023)
+- Uses the same card design pattern as /summary/[id] page for consistency
+- The detailLevelLabels mapping is duplicated from /summary/[id]/page.tsx - could be extracted to a shared utility if more pages need it
+- Currently uses only SELECT for efficiency (only fetches needed fields, not full content)
+- Next priority is US-026: Eliminazione riassunto

@@ -415,8 +415,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 25,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /dashboard page as server component. Fetches user summaries from database using getSession() for auth. Displays summary cards with title, PDF name, detail level (Italian labels), and creation date. Summaries ordered by created_at descending. Click on card navigates to /summary/[id]. Empty state shows 'Nessun riassunto' message with icon and CTA to upload first PDF. 'Carica nuovo PDF' button at top. Responsive design with dark mode support. Route already protected by middleware (US-023). Typecheck passes."
     },
     {
       "id": "US-026",
