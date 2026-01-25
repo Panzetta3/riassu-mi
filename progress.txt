@@ -413,3 +413,41 @@
 - The "Genera Quiz" button links to a route that doesn't exist yet (/quiz/generate/[id]) - that's US-016
 - Detail level labels are mapped from English (brief/medium/detailed) to Italian (Breve/Medio/Dettagliato)
 - Next priority is US-014: Progress indicator durante generazione
+
+---
+
+## 2026-01-25 - US-014: Progress indicator durante generazione
+
+### What was done:
+- Created ProgressIndicator component in components/progress-indicator.tsx
+- Component supports 4 stages: analyzing, generating, chunking, saving
+- Each stage has a main message and a description in Italian
+- Features implemented:
+  - Spinner with pulsing background animation for visual feedback
+  - Different messages for each stage ("Analizzando il PDF...", "Generando riassunto...", etc.)
+  - For chunking stage: shows "Elaborando parte X di Y..." with a progress bar
+  - Progress bar with percentage indicator
+  - Helpful tip box explaining not to close the page
+- Updated /upload page to integrate the progress indicator:
+  - Shows ProgressIndicator when isProcessing is true
+  - Form is hidden during processing for clean UI
+  - Stage transitions: analyzing (1.5s) -> generating -> saving -> redirect
+  - API error handling with styled error message display
+  - Connected "Genera Riassunto" button to handleSubmit function
+- Full API integration: creates FormData, calls /api/summarize, redirects to /summary/[id]
+- Smooth animations using Tailwind CSS transition classes
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/progress-indicator.tsx (new - ProgressIndicator component with stage support)
+- app/upload/page.tsx (updated - added processing state, API call, progress indicator integration)
+
+### Notes for next developer:
+- Import the component: `import { ProgressIndicator, ProgressStage } from '@/components/progress-indicator'`
+- ProgressStage type is "analyzing" | "generating" | "chunking" | "saving"
+- The chunking stage supports a progress object: `{ current: number, total: number }`
+- The actual chunking progress from OpenRouter isn't streamed to the client (would require SSE/WebSocket)
+- For now, client simulates stage transitions; server-side streaming could be added later
+- Error messages from the API are displayed with a styled red error box
+- The page automatically redirects to /summary/[summaryId] on success
+- Next priority is US-015: Servizio generazione quiz
