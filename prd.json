@@ -384,8 +384,8 @@
         "Typecheck passa"
       ],
       "priority": 23,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created middleware.ts using Edge-compatible Web Crypto API for session verification. Protected routes (/dashboard) redirect to /login with redirect query param if not authenticated. Public routes (/, /upload, /login, /register, /summary, /quiz) are accessible to all. Middleware verifies HMAC-SHA256 signed session tokens and checks expiry. Invalid/expired sessions are cleared. getSession() was already implemented in lib/auth.ts (US-022). Typecheck passes."
     },
     {
       "id": "US-024",
