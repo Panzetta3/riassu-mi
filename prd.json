@@ -283,8 +283,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /quiz/generate/[summaryId] page that calls quiz API and redirects to quiz page. Created /quiz/[id] page with server component (page.tsx) and client component (quiz-interface.tsx). Features: one question at a time with progress bar, question number (1/10), multiple choice with 4 options (A/B/C/D labels), true/false with Vero/Falso buttons, visual highlighting of selected answer, Indietro/Avanti navigation buttons, dot navigation to jump between questions, answered questions shown in green. Verifica Risposte button visible on last question (disabled until all answered). Responsive design with dark mode support. Typecheck passes."
     },
     {
       "id": "US-018",

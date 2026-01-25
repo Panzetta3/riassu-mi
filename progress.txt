@@ -517,3 +517,43 @@
 - Quiz is stored in database linked to the summary via summary_id foreign key
 - The endpoint can be called from the "Genera Quiz" button on /summary/[id] page
 - Next priority is US-017: Interfaccia quiz interattivo
+
+---
+
+## 2026-01-25 - US-017: Interfaccia quiz interattivo
+
+### What was done:
+- Created /quiz/generate/[summaryId] page that calls the quiz API and redirects
+  - Shows loading spinner with "Generando il Quiz..." message
+  - Error handling with retry option
+  - Redirects to /quiz/[quizId] on success
+- Created /quiz/[id] page with interactive quiz interface
+  - Server component (page.tsx) fetches quiz and summary data from database
+  - Client component (quiz-interface.tsx) handles all interactive state
+- Quiz interface features:
+  - One question at a time with question number (1/10)
+  - Progress bar showing current position
+  - Question type badge (Scelta multipla / Vero/Falso)
+  - Multiple choice: 4 option buttons with A/B/C/D letter labels
+  - True/False: Vero/Falso buttons with checkmark/X icons
+  - Visual highlighting of selected answer (blue for MC, green for Vero, red for Falso)
+  - Navigation buttons: Indietro (back) and Avanti (next)
+  - Dot navigation at bottom to jump between questions
+  - Answered questions shown with green dots
+  - "Verifica Risposte" button appears on last question (disabled until all questions answered)
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/quiz/generate/[summaryId]/page.tsx (new - quiz generation page)
+- app/quiz/[id]/page.tsx (new - quiz page server component)
+- app/quiz/[id]/quiz-interface.tsx (new - quiz interface client component)
+
+### Notes for next developer:
+- The "Genera Quiz" button on /summary/[id] now works - it navigates to /quiz/generate/[summaryId]
+- Quiz answers are passed to results page via URL query parameter (JSON encoded)
+- The results page (/quiz/[id]/results) is not yet implemented - that's US-018
+- QuizQuestion type is imported from '@/lib/openrouter'
+- Answer state is stored as (string | null)[] array matching questions array
+- Next priority is US-018: Schermata risultati quiz
