@@ -398,8 +398,8 @@
         "Typecheck passa"
       ],
       "priority": 24,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Modified app/api/summarize/route.ts to import getSession from lib/auth. API now calls getSession() to retrieve current user session. If user is logged in, their ID is saved as user_id in the Summary record. If guest (no session), user_id remains null. Typecheck passes."
     },
     {
       "id": "US-025",

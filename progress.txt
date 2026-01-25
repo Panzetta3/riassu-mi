@@ -787,3 +787,26 @@
 - The `?redirect=` query param can be used by /login to redirect back after successful auth
 - getSession() from lib/auth.ts should still be used in server components for actual user data
 - Next priority is US-024: Associare riassunti all'utente loggato
+
+---
+
+## 2026-01-25 - US-024: Associare riassunti all'utente loggato
+
+### What was done:
+- Modified app/api/summarize/route.ts to associate summaries with logged-in users
+- Added import for getSession from '@/lib/auth'
+- API now calls getSession() to retrieve the current user session
+- If user is logged in (session exists): user_id is set to session.id
+- If guest (no session): user_id remains null
+- Used nullish coalescing operator (session?.id ?? null) for clean null handling
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/api/summarize/route.ts (updated - added getSession import and user_id association)
+
+### Notes for next developer:
+- Summaries created by logged-in users will now appear in their dashboard (once US-025 is implemented)
+- Guest users can still create summaries, but they won't be saved to any user account
+- The getSession() function handles all session validation including signature verification and expiry
+- No changes needed to the frontend - authentication is transparent to the user
+- Next priority is US-025: Dashboard utente con storico

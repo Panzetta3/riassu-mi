@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { extractText, PDFExtractionError } from '@/lib/pdf-parser'
 import { generateSummaryWithChunking, OpenRouterError } from '@/lib/openrouter'
 import { parsePageRanges } from '@/lib/utils'
+import { getSession } from '@/lib/auth'
 import type { DetailLevel } from '@/components/detail-level-selector'
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
@@ -147,14 +148,17 @@ export async function POST(
     const pdfName = file.name
     const title = pdfName.replace(/\.pdf$/i, '')
 
-    // Save summary to database (user_id is null for guest users)
+    // Get current user session (if logged in)
+    const session = await getSession()
+
+    // Save summary to database (user_id is set if user is logged in, null for guests)
     const summary = await prisma.summary.create({
       data: {
         title,
         content: summaryContent,
         detail_level: detailLevel,
         pdf_name: pdfName,
-        user_id: null // Guest user for now, will be updated in US-024
+        user_id: session?.id ?? null
       }
     })
 
