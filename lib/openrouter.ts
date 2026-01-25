@@ -2,6 +2,22 @@ import { getActiveKeyWithId, markKeyFailed, markKeySuccess } from './api-keys'
 import type { DetailLevel } from '@/components/detail-level-selector'
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+
+/**
+ * Quiz question types
+ */
+export type QuizQuestionType = 'multiple_choice' | 'true_false'
+
+/**
+ * Quiz question structure
+ */
+export interface QuizQuestion {
+  question: string
+  type: QuizQuestionType
+  options?: string[] // Only for multiple_choice (4 options)
+  correctAnswer: string
+  explanation: string
+}
 const MODEL = 'meta-llama/llama-3.2-3b-instruct:free'
 const MAX_RETRIES = 3
 const DEFAULT_MAX_TOKENS = 3000 // Safe limit for free models
@@ -478,4 +494,242 @@ Non aggiungere nuove informazioni, solo unifica e riorganizza il contenuto esist
   }
 
   throw lastError || new OpenRouterError('Impossibile combinare i riassunti')
+}
+
+/**
+ * System prompt for quiz generation
+ */
+function getQuizSystemPrompt(): string {
+  return `Sei un assistente specializzato nel creare quiz di verifica dell'apprendimento.
+Il tuo compito è generare domande basate sul contenuto fornito per testare la comprensione dello studente.
+
+REGOLE IMPORTANTI:
+1. Genera esattamente 10 domande
+2. Circa 7 domande devono essere a scelta multipla (multiple_choice) con 4 opzioni
+3. Circa 3 domande devono essere vero/falso (true_false)
+4. Le domande devono essere nella stessa lingua del contenuto
+5. Le domande devono coprire i concetti principali del materiale
+6. Le opzioni errate devono essere plausibili ma chiaramente sbagliate
+7. Ogni domanda deve avere una spiegazione chiara della risposta corretta
+
+Rispondi SOLO con un array JSON valido, senza testo aggiuntivo.
+Il formato deve essere esattamente questo:
+[
+  {
+    "question": "testo della domanda",
+    "type": "multiple_choice",
+    "options": ["opzione A", "opzione B", "opzione C", "opzione D"],
+    "correctAnswer": "opzione corretta esatta",
+    "explanation": "spiegazione del perché questa è la risposta corretta"
+  },
+  {
+    "question": "affermazione da valutare",
+    "type": "true_false",
+    "correctAnswer": "Vero" o "Falso",
+    "explanation": "spiegazione del perché l'affermazione è vera o falsa"
+  }
+]
+
+IMPORTANTE:
+- Per le domande true_false, NON includere il campo "options"
+- Il campo correctAnswer per true_false deve essere esattamente "Vero" o "Falso"
+- Il campo correctAnswer per multiple_choice deve corrispondere esattamente a una delle opzioni`
+}
+
+/**
+ * User prompt for quiz generation
+ */
+function getQuizUserPrompt(summaryContent: string): string {
+  return `Genera un quiz di 10 domande basato sul seguente riassunto:
+
+---
+${summaryContent}
+---
+
+Ricorda: genera 7 domande a scelta multipla e 3 domande vero/falso.
+Rispondi SOLO con l'array JSON, senza testo introduttivo o di chiusura.`
+}
+
+/**
+ * Parses the quiz response from the AI model.
+ * Handles various edge cases like markdown code blocks and extra text.
+ */
+function parseQuizResponse(response: string): QuizQuestion[] {
+  // Remove markdown code blocks if present
+  let cleanedResponse = response.trim()
+
+  // Remove ```json and ``` wrappers
+  if (cleanedResponse.startsWith('```json')) {
+    cleanedResponse = cleanedResponse.slice(7)
+  } else if (cleanedResponse.startsWith('```')) {
+    cleanedResponse = cleanedResponse.slice(3)
+  }
+
+  if (cleanedResponse.endsWith('```')) {
+    cleanedResponse = cleanedResponse.slice(0, -3)
+  }
+
+  cleanedResponse = cleanedResponse.trim()
+
+  // Find the JSON array in the response (in case there's extra text)
+  const arrayStart = cleanedResponse.indexOf('[')
+  const arrayEnd = cleanedResponse.lastIndexOf(']')
+
+  if (arrayStart === -1 || arrayEnd === -1) {
+    throw new OpenRouterError(
+      'La risposta non contiene un array JSON valido',
+      'INVALID_JSON_FORMAT'
+    )
+  }
+
+  const jsonString = cleanedResponse.slice(arrayStart, arrayEnd + 1)
+
+  try {
+    const questions = JSON.parse(jsonString)
+
+    if (!Array.isArray(questions)) {
+      throw new Error('Response is not an array')
+    }
+
+    // Validate and normalize each question
+    return questions.map((q, index): QuizQuestion => {
+      if (!q.question || typeof q.question !== 'string') {
+        throw new Error(`Question ${index + 1} is missing the 'question' field`)
+      }
+
+      if (!q.type || (q.type !== 'multiple_choice' && q.type !== 'true_false')) {
+        throw new Error(`Question ${index + 1} has invalid type: ${q.type}`)
+      }
+
+      if (!q.correctAnswer || typeof q.correctAnswer !== 'string') {
+        throw new Error(`Question ${index + 1} is missing the 'correctAnswer' field`)
+      }
+
+      if (!q.explanation || typeof q.explanation !== 'string') {
+        throw new Error(`Question ${index + 1} is missing the 'explanation' field`)
+      }
+
+      if (q.type === 'multiple_choice') {
+        if (!Array.isArray(q.options) || q.options.length !== 4) {
+          throw new Error(`Question ${index + 1} (multiple_choice) must have exactly 4 options`)
+        }
+
+        // Verify correctAnswer is in options
+        if (!q.options.includes(q.correctAnswer)) {
+          // Try to find a close match (case insensitive)
+          const matchingOption = q.options.find(
+            (opt: string) => opt.toLowerCase().trim() === q.correctAnswer.toLowerCase().trim()
+          )
+          if (matchingOption) {
+            q.correctAnswer = matchingOption
+          } else {
+            console.warn(`Question ${index + 1}: correctAnswer "${q.correctAnswer}" not found in options`)
+          }
+        }
+
+        return {
+          question: q.question,
+          type: 'multiple_choice',
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation
+        }
+      } else {
+        // true_false
+        // Normalize the answer to "Vero" or "Falso"
+        const normalizedAnswer = q.correctAnswer.toLowerCase().trim()
+        let correctAnswer: string
+
+        if (normalizedAnswer === 'vero' || normalizedAnswer === 'true' || normalizedAnswer === 'v') {
+          correctAnswer = 'Vero'
+        } else if (normalizedAnswer === 'falso' || normalizedAnswer === 'false' || normalizedAnswer === 'f') {
+          correctAnswer = 'Falso'
+        } else {
+          correctAnswer = q.correctAnswer // Keep original if not recognized
+        }
+
+        return {
+          question: q.question,
+          type: 'true_false',
+          correctAnswer,
+          explanation: q.explanation
+        }
+      }
+    })
+  } catch (error) {
+    if (error instanceof OpenRouterError) {
+      throw error
+    }
+    throw new OpenRouterError(
+      `Errore nel parsing del quiz: ${error instanceof Error ? error.message : String(error)}`,
+      'JSON_PARSE_ERROR'
+    )
+  }
+}
+
+/**
+ * Generates a quiz based on the summary content.
+ * Creates 10 questions: ~7 multiple choice (4 options each) and ~3 true/false.
+ * Questions are in the same language as the content.
+ *
+ * @param summaryContent - The summary content to base the quiz on
+ * @returns Array of quiz questions
+ * @throws OpenRouterError if API calls fail or response parsing fails
+ */
+export async function generateQuiz(summaryContent: string): Promise<QuizQuestion[]> {
+  const messages = [
+    { role: 'system', content: getQuizSystemPrompt() },
+    { role: 'user', content: getQuizUserPrompt(summaryContent) }
+  ]
+
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const keyData = await getActiveKeyWithId()
+
+    if (!keyData) {
+      throw new OpenRouterError(
+        'Nessuna API key disponibile. Contatta l\'amministratore.',
+        'NO_API_KEY'
+      )
+    }
+
+    try {
+      const response = await callOpenRouter(keyData.key, messages)
+
+      // Mark the key as successful
+      await markKeySuccess(keyData.id)
+
+      // Parse and validate the quiz response
+      const questions = parseQuizResponse(response)
+
+      return questions
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+
+      // Mark the key as failed only for API errors, not parsing errors
+      if (error instanceof OpenRouterError && error.status) {
+        await markKeyFailed(keyData.id)
+
+        const status = error.status
+        // 401 = auth error, 429 = rate limit, 402 = payment required
+        if (status === 401 || status === 429 || status === 402) {
+          continue // Try next key
+        }
+      }
+
+      // For parsing errors or other errors, break after last attempt
+      if (attempt === MAX_RETRIES - 1) {
+        break
+      }
+
+      // For parsing errors, mark key success (API worked) but still retry
+      if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR') {
+        await markKeySuccess(keyData.id)
+        continue // Retry, maybe next attempt will get valid JSON
+      }
+    }
+  }
+
+  throw lastError || new OpenRouterError('Impossibile generare il quiz dopo diversi tentativi')
 }

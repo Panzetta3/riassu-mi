@@ -248,8 +248,8 @@
         "Typecheck passa"
       ],
       "priority": 15,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created generateQuiz(summaryContent) function in lib/openrouter.ts. Generates 10 questions: ~7 multiple choice (4 options each) and ~3 true/false. Returns array of QuizQuestion objects with question, type, options (for MC), correctAnswer, explanation. Italian system prompt requests questions in content language. Includes robust JSON parsing with markdown code block handling. API key failover integrated with retry on auth/rate limit errors. QuizQuestion and QuizQuestionType types exported. Typecheck passes."
     },
     {
       "id": "US-016",

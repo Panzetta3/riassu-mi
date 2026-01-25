@@ -451,3 +451,40 @@
 - Error messages from the API are displayed with a styled red error box
 - The page automatically redirects to /summary/[summaryId] on success
 - Next priority is US-015: Servizio generazione quiz
+
+---
+
+## 2026-01-25 - US-015: Servizio generazione quiz
+
+### What was done:
+- Added quiz generation functionality to lib/openrouter.ts
+- Created `generateQuiz(summaryContent)` function that generates 10 quiz questions
+- Quiz composition: ~7 multiple choice questions (4 options each) and ~3 true/false questions
+- Defined TypeScript types:
+  - `QuizQuestionType` = 'multiple_choice' | 'true_false'
+  - `QuizQuestion` interface with question, type, options?, correctAnswer, explanation
+- Italian system prompt requests questions in the same language as the content
+- Features implemented:
+  - `getQuizSystemPrompt()` - Detailed Italian prompt with JSON format specification
+  - `getQuizUserPrompt()` - User prompt with summary content
+  - `parseQuizResponse()` - Robust JSON parsing with:
+    - Markdown code block removal (```json ... ```)
+    - Array extraction from response text
+    - Question validation and normalization
+    - True/false answer normalization (handles Vero/Falso/True/False/V/F)
+    - Multiple choice option matching for correctAnswer
+- Integrated API key failover: retries on 401/429/402 errors with different keys
+- Special handling: marks key success on parse errors (API worked), still retries for better JSON
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/openrouter.ts (updated - added quiz generation functionality)
+
+### Notes for next developer:
+- Import quiz function: `import { generateQuiz, QuizQuestion, QuizQuestionType } from '@/lib/openrouter'`
+- The function is async and returns `Promise<QuizQuestion[]>`
+- For multiple_choice questions: `options` array has 4 strings, `correctAnswer` matches one exactly
+- For true_false questions: `correctAnswer` is "Vero" or "Falso", no `options` field
+- Each question has an `explanation` field explaining why the answer is correct
+- The parser handles markdown code blocks and extra text from AI responses
+- Next priority is US-016: API route per generazione quiz
