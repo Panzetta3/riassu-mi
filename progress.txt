@@ -93,3 +93,37 @@
 - IMPORTANT: Change ENCRYPTION_KEY in production to a strong random value
 - Use `addApiKey(key, 'openrouter')` to add new API keys to the database
 - Next priority is US-004: Componenti UI base
+
+---
+
+## 2026-01-25 - US-004: Componenti UI base
+
+### What was done:
+- Created components/ui/ directory with reusable UI components
+- Created Button component with 3 variants: primary, secondary, ghost
+- Created Card component with CardHeader, CardContent, CardFooter subcomponents
+- Created Input component with label and error state support
+- Created Select component with label, error state, and custom dropdown arrow
+- Created Spinner component with sm/md/lg size variants
+- Created index.tsx for easy component imports
+- All components use Tailwind CSS for styling
+- All components typed with TypeScript and use forwardRef for ref forwarding
+- Supports dark mode via Tailwind dark: variants
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/ui/button.tsx (new - Button with primary/secondary/ghost variants)
+- components/ui/card.tsx (new - Card, CardHeader, CardContent, CardFooter)
+- components/ui/input.tsx (new - Input with label and error support)
+- components/ui/select.tsx (new - Select dropdown with options)
+- components/ui/spinner.tsx (new - Loading spinner with size variants)
+- components/ui/index.tsx (new - barrel export for all components)
+
+### Notes for next developer:
+- Import components: `import { Button, Card, Input, Select, Spinner } from '@/components/ui'`
+- Button variants: `<Button variant="primary|secondary|ghost">...</Button>`
+- Card example: `<Card><CardHeader>Title</CardHeader><CardContent>Body</CardContent></Card>`
+- Input with error: `<Input label="Email" error="Invalid email" />`
+- Select usage: `<Select options={[{value: 'a', label: 'A'}]} label="Choose" />`
+- Spinner sizes: `<Spinner size="sm|md|lg" />`
+- Next priority is US-005: Homepage con hero section
