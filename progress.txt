@@ -557,3 +557,45 @@
 - QuizQuestion type is imported from '@/lib/openrouter'
 - Answer state is stored as (string | null)[] array matching questions array
 - Next priority is US-018: Schermata risultati quiz
+
+---
+
+## 2026-01-25 - US-018: Schermata risultati quiz
+
+### What was done:
+- Created /quiz/[id]/results page with server and client components
+- Server component (page.tsx) handles:
+  - Fetching quiz and summary data from database
+  - Parsing user answers from URL query parameter
+  - Validating answers array matches questions length
+  - 404 handling for non-existent quiz
+- Client component (quiz-results.tsx) displays:
+  - Score card with X/10 format and percentage
+  - Color-coded feedback based on performance:
+    - Green (>=80%): "Ottimo lavoro!"
+    - Yellow (>=60%): "Buon risultato!"
+    - Red (<60%): "Continua a studiare!"
+  - Question list with green/red left border indicators
+  - Checkmark/X icons for correct/incorrect answers
+  - Question type badges (Scelta multipla / Vero / Falso)
+  - User's answer shown for each question
+  - Correct answer and explanation shown only for incorrect answers
+  - Explanation in styled info box with icon
+- Action buttons:
+  - "Ripeti Quiz" button links back to /quiz/[id] to retake quiz
+  - "Torna al Riassunto" button links to /summary/[summaryId]
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/quiz/[id]/results/page.tsx (new - server component for results page)
+- app/quiz/[id]/results/quiz-results.tsx (new - client component for results display)
+
+### Notes for next developer:
+- Answers are passed via URL query parameter `?answers=` as JSON-encoded array
+- Results are calculated client-side by comparing user answers with correctAnswer from questions
+- The "Ripeti Quiz" button resets the quiz by navigating to the quiz page (answers start fresh)
+- Explanations are only shown for incorrect answers to focus user attention on learning
+- Score percentage determines the motivational message and color scheme
+- Next priority is US-019: Download riassunto come PDF

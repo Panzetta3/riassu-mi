@@ -301,8 +301,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 18,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /quiz/[id]/results page with server component (page.tsx) and client component (quiz-results.tsx). Features: score display X/10 with percentage, color-coded feedback based on performance (green >=80%, yellow >=60%, red <60%), question list with green/red left border and checkmark/X icons, user answer shown for each question, correct answer and explanation shown only for incorrect answers, 'Ripeti Quiz' button links back to quiz page, 'Torna al Riassunto' button links to summary page. Responsive design with dark mode support. Typecheck passes."
     },
     {
       "id": "US-019",
