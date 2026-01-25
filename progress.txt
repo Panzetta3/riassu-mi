@@ -707,3 +707,50 @@
 - The API uses 409 Conflict status for duplicate email (standard HTTP code)
 - The login page (/login) referenced in the form link doesn't exist yet - that's US-022
 - Next priority is US-022: Form login e gestione sessione
+
+---
+
+## 2026-01-25 - US-022: Form login e gestione sessione
+
+### What was done:
+- Created lib/auth.ts with complete session management functionality:
+  - `createSessionToken(userId)` - Creates signed token with user ID and timestamp
+  - `verifySessionToken(token)` - Verifies signature and expiry using timing-safe comparison
+  - `getSession()` - Returns current user from session cookie or null
+  - `createSession(userId)` - Sets HTTP-only cookie after login
+  - `destroySession()` - Clears session cookie for logout
+- Session uses HMAC-SHA256 signing with SESSION_SECRET or ENCRYPTION_KEY from env
+- Session cookie properties: HTTP-only, Secure in production, SameSite=lax, 7 days expiry
+- Created API route at app/api/auth/login/route.ts:
+  - Validates required fields (email, password)
+  - Finds user by lowercase email
+  - Verifies password with bcrypt.compare()
+  - Returns generic "Credenziali non valide" error (prevents email enumeration)
+  - Creates session on successful login
+  - Returns user info on success
+- Created /login page with login form:
+  - Email and password fields with validation
+  - Client-side validation before API call
+  - Loading state with spinner during submission
+  - Error display for API errors
+  - Success message for users coming from registration (?registered=true)
+  - Auto-hides registration message after 5 seconds
+  - Redirect to /dashboard on successful login
+  - Link to registration page for new users
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/auth.ts (new - session management with signed cookies)
+- app/api/auth/login/route.ts (new - login API endpoint)
+- app/login/page.tsx (new - login form page)
+
+### Notes for next developer:
+- Import session functions: `import { getSession, createSession, destroySession } from '@/lib/auth'`
+- `getSession()` returns `{ id: string, email: string }` or `null`
+- Session token format: `userId:timestamp:signature` (HMAC-SHA256)
+- The /dashboard page doesn't exist yet - that's US-025
+- Middleware for protecting routes will be implemented in US-023
+- SESSION_SECRET can be added to .env for a separate session key, or it will use ENCRYPTION_KEY
+- Next priority is US-023: Middleware autenticazione

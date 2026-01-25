@@ -369,8 +369,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 22,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /login page with email+password form. Created lib/auth.ts with session management using HMAC-SHA256 signed HTTP-only cookies. Cookie contains user ID and timestamp, signed with SESSION_SECRET or ENCRYPTION_KEY from env. Session expiry is 7 days. API route at /api/auth/login verifies credentials with bcrypt.compare(). Returns 401 with generic 'Credenziali non valide' message for security (prevents email enumeration). Redirects to /dashboard on success. Shows success message when coming from registration (?registered=true). Client-side validation for email format. Loading state with spinner during API call. Dark mode support. Typecheck passes."
     },
     {
       "id": "US-023",
