@@ -187,3 +187,33 @@
 - formatFileSize utility function also exported
 - The "Genera Riassunto" button doesn't have functionality yet - that's US-012
 - Next priority is US-007: Estrazione testo da PDF
+
+---
+
+## 2026-01-25 - US-007: Estrazione testo da PDF
+
+### What was done:
+- Installed pdf-parse 2.4.5 library for PDF text extraction
+- Created lib/pdf-parser.ts with complete PDF text extraction functionality
+- Functions implemented:
+  - `extractText(buffer, excludePages?)` - Main function that returns array of { pageNumber, text }
+  - `extractTextWithInfo(buffer, excludePages?)` - Returns pages array plus totalPages count
+  - `getPageCount(buffer)` - Gets total page count without extracting text
+- Support for excluding specific pages via excludePages parameter (1-indexed array)
+- Custom PDFExtractionError class for error handling
+- Error handling for:
+  - PDFs with no pages
+  - All pages excluded
+  - PDFs with no extractable text (scanned images, protected content)
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (added pdf-parse, @types/pdf-parse)
+- lib/pdf-parser.ts (new - PDF text extraction service)
+
+### Notes for next developer:
+- Import functions: `import { extractText, extractTextWithInfo, getPageCount, PDFExtractionError } from '@/lib/pdf-parser'`
+- The excludePages parameter is 1-indexed (first page is 1, not 0)
+- extractText returns only pages with extracted text; use extractTextWithInfo to also get totalPages
+- The pdf-parse library uses pdfjs-dist under the hood and works in Node.js environment
+- Next priority is US-008: Input selezione pagine da escludere
