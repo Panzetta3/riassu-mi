@@ -62,6 +62,7 @@ export default async function QuizResultsPage({
           userAnswers={userAnswers}
           summaryId={quiz.summary?.id || ""}
           summaryTitle={quiz.summary?.title || "Quiz"}
+          createdAt={quiz.created_at}
         />
       </div>
     </div>

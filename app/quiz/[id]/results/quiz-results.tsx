@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button, Card, CardContent } from "@/components/ui";
 import type { QuizQuestion } from "@/lib/openrouter";
+import { generateQuizPdf } from "@/lib/pdf-generator";
 
 interface QuizResultsProps {
   quizId: string;
@@ -10,6 +11,7 @@ interface QuizResultsProps {
   userAnswers: (string | null)[];
   summaryId: string;
   summaryTitle: string;
+  createdAt: Date;
 }
 
 export function QuizResults({
@@ -18,7 +20,15 @@ export function QuizResults({
   userAnswers,
   summaryId,
   summaryTitle,
+  createdAt,
 }: QuizResultsProps) {
+  const handleDownloadPdf = () => {
+    generateQuizPdf({
+      title: summaryTitle,
+      createdAt,
+      questions,
+    });
+  };
   // Calculate score
   const results = questions.map((question, index) => {
     const userAnswer = userAnswers[index];
@@ -254,6 +264,26 @@ export function QuizResults({
             Ripeti Quiz
           </Button>
         </Link>
+        <Button
+          variant="secondary"
+          className="w-full sm:w-auto"
+          onClick={handleDownloadPdf}
+        >
+          <svg
+            className="mr-2 h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+          Scarica Quiz
+        </Button>
         <Link href={`/summary/${summaryId}`}>
           <Button variant="secondary" className="w-full sm:w-auto">
             <svg

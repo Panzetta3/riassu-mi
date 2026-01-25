@@ -632,3 +632,37 @@
 - PDF uses Helvetica font (built into jsPDF, no external fonts needed)
 - The sanitized filename removes special characters and limits to 50 chars
 - Next priority is US-020: Download quiz come PDF
+
+---
+
+## 2026-01-25 - US-020: Download quiz come PDF
+
+### What was done:
+- Added generateQuizPdf() function to lib/pdf-generator.ts
+- PDF structure:
+  - Title "Quiz di Verifica" with summary title subtitle
+  - Creation date
+  - Numbered questions with type indicator (Scelta multipla / Vero/Falso)
+  - Multiple choice questions show A/B/C/D option labels
+  - True/False questions show "○ Vero    ○ Falso" options
+  - Answers section on separate page at end of document
+  - Each answer shows correct response and explanation (in italic)
+  - Footer on all pages: "Generato con Riassu.mi - Pagina X di Y"
+- File naming: quiz-[sanitized-title]-[date].pdf
+- Added "Scarica Quiz" button with download icon to quiz results page
+- Updated QuizResults component to accept createdAt prop
+- Updated server component to pass quiz.created_at to client component
+- Typecheck passes successfully
+
+### Files created/modified:
+- lib/pdf-generator.ts (updated - added generateQuizPdf function and QuizPdfData interface)
+- app/quiz/[id]/results/quiz-results.tsx (updated - added download button and handler)
+- app/quiz/[id]/results/page.tsx (updated - passes createdAt prop)
+
+### Notes for next developer:
+- Import quiz PDF generator: `import { generateQuizPdf } from '@/lib/pdf-generator'`
+- The function takes QuizPdfData object with title, createdAt, questions (QuizQuestion[])
+- The answers section is always on a new page for easy separate printing
+- Questions have estimated height check for page breaks
+- Both summary and quiz PDF generators share the same file
+- Next priority is US-021: Form registrazione utente

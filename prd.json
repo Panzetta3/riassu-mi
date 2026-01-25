@@ -333,8 +333,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Added generateQuizPdf function to lib/pdf-generator.ts. PDF includes: title 'Quiz di Verifica', summary title, creation date, numbered questions with type indicator (Scelta multipla/Vero-Falso), options with A/B/C/D labels for multiple choice or Vero/Falso circles for true/false. Answers section on separate page at end with correct answers and explanations. Footer shows 'Generato con Riassu.mi - Pagina X di Y'. File named quiz-[sanitized-title]-[date].pdf. Added 'Scarica Quiz' button with download icon to quiz results page. Typecheck passes."
     },
     {
       "id": "US-021",
