@@ -376,3 +376,40 @@
 - The summaryId can be used to navigate to /summary/[id] page (US-013)
 - User authentication will be added in US-024 to associate summaries with logged-in users
 - Next priority is US-013: Pagina risultato riassunto
+
+---
+
+## 2026-01-25 - US-013: Pagina risultato riassunto
+
+### What was done:
+- Created /summary/[id] dynamic route page for displaying generated summaries
+- Installed react-markdown for Markdown rendering
+- Server component (page.tsx) fetches summary from database using Prisma
+- Shows 404 if summary not found using Next.js notFound()
+- Displays summary metadata: PDF title, detail level (with Italian labels), creation date
+- Client component (summary-content.tsx) handles Markdown rendering with custom styled components:
+  - Headings (h1, h2, h3) with proper spacing and colors
+  - Paragraphs with relaxed line height
+  - Ordered and unordered lists with bullet/number styling
+  - Bold and italic text with appropriate colors
+  - Blockquotes with blue left border and background
+  - Inline and block code with monospace font
+  - Horizontal rules
+- "Genera Quiz" button links to /quiz/generate/[summaryId] (quiz generation in US-016)
+- "Scarica PDF" button with placeholder (full implementation in US-019)
+- Responsive design with mobile-first approach
+- Dark mode support throughout
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (added react-markdown dependency)
+- app/summary/[id]/page.tsx (new - server component for summary page)
+- app/summary/[id]/summary-content.tsx (new - client component for Markdown rendering and actions)
+
+### Notes for next developer:
+- The summary page uses server components for data fetching, client components for interactivity
+- ReactMarkdown is used with custom component overrides for consistent styling
+- The "Scarica PDF" button shows an alert - full PDF generation will be implemented in US-019
+- The "Genera Quiz" button links to a route that doesn't exist yet (/quiz/generate/[id]) - that's US-016
+- Detail level labels are mapped from English (brief/medium/detailed) to Italian (Breve/Medio/Dettagliato)
+- Next priority is US-014: Progress indicator durante generazione

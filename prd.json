@@ -216,8 +216,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /summary/[id] dynamic route page. Server component fetches summary from database, displays PDF title, detail level (with Italian labels), and creation date. Uses react-markdown for Markdown rendering with custom styled components for headings, paragraphs, lists, blockquotes, code blocks. 'Genera Quiz' button links to /quiz/generate/[summaryId]. 'Scarica PDF' button placeholder (full implementation in US-019). Responsive design with dark mode support. Typecheck passes."
     },
     {
       "id": "US-014",
