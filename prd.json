@@ -99,8 +99,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /upload page with FileUpload component. Features: drag & drop with visual feedback, click to select file, .pdf validation with MIME type check, 20MB size limit, displays file name and formatted size, error messages for invalid files, clear file button. Mobile-first responsive design. Typecheck passes."
     },
     {
       "id": "US-007",

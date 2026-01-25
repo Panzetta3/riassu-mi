@@ -155,3 +155,35 @@
 - Responsive breakpoints: default (mobile), sm:, md:
 - The /upload route is not yet created - that's US-006
 - Next priority is US-006: Upload PDF con drag & drop
+
+---
+
+## 2026-01-25 - US-006: Upload PDF con drag & drop
+
+### What was done:
+- Created /upload page with file upload functionality
+- Created FileUpload component with drag & drop support
+- Features implemented:
+  - Drag & drop with visual feedback (border color change, background change)
+  - Click to select file via hidden input
+  - Validation for .pdf extension and application/pdf MIME type
+  - 20MB file size limit
+  - Displays file name and formatted file size after selection
+  - Error messages for invalid files (wrong format, size exceeded)
+  - "Rimuovi file" button to clear selection
+  - "Genera Riassunto" button appears when file is valid
+- Mobile-first responsive design with Tailwind CSS
+- Dark mode support throughout
+- Back link to homepage
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/file-upload.tsx (new - FileUpload component with drag & drop)
+- app/upload/page.tsx (new - upload page with validation logic)
+
+### Notes for next developer:
+- FileUpload is a reusable component: `import { FileUpload } from '@/components/file-upload'`
+- MAX_FILE_SIZE constant exported from file-upload.tsx (20MB)
+- formatFileSize utility function also exported
+- The "Genera Riassunto" button doesn't have functionality yet - that's US-012
+- Next priority is US-007: Estrazione testo da PDF
