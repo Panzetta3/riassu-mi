@@ -25,3 +25,38 @@
 - Next priority is US-002: Setup Prisma with base schema
 - Run `npm run dev` to start development server
 - Run `npm run typecheck` to check types
+
+---
+
+## 2026-01-25 - US-002: Setup Prisma con schema base
+
+### What was done:
+- Installed Prisma 7.3.0 and @prisma/client
+- Configured SQLite with better-sqlite3 adapter (required for Prisma 7)
+- Created all database models:
+  - User: id, email, password_hash, created_at, summaries relation
+  - Summary: id, user_id (nullable), title, content, detail_level, pdf_name, created_at, quizzes relation
+  - Quiz: id, summary_id, questions (JSON as string), created_at
+  - ApiKey: id, key_encrypted, provider, is_active, last_used, fail_count, disabled_until
+- Ran initial migration successfully
+- Generated Prisma client to lib/generated/prisma/
+- Created lib/prisma.ts singleton for database access
+- Typecheck passes successfully
+
+### Files created/modified:
+- package.json (added prisma, @prisma/client, @prisma/adapter-better-sqlite3, better-sqlite3, dotenv)
+- prisma/schema.prisma (database schema)
+- prisma/migrations/20260125113815_init/migration.sql (initial migration)
+- prisma/dev.db (SQLite database file)
+- prisma.config.ts (Prisma configuration)
+- lib/prisma.ts (Prisma client singleton)
+- lib/generated/prisma/ (generated Prisma client)
+- .env (DATABASE_URL configuration)
+
+### Notes for next developer:
+- Use `import { prisma } from '@/lib/prisma'` to access the database
+- Prisma 7 uses a new configuration approach - see prisma.config.ts
+- The SQLite database file is at prisma/dev.db
+- Run `npx prisma studio` to view/edit data
+- Run `npx prisma migrate dev` to apply schema changes
+- Next priority is US-003: Servizio gestione API key con failover

@@ -1,0 +1,49 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password_hash String
+  created_at    DateTime  @default(now())
+  summaries     Summary[]
+}
+
+model Summary {
+  id           String   @id @default(cuid())
+  user_id      String?
+  user         User?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title        String
+  content      String
+  detail_level String
+  pdf_name     String
+  created_at   DateTime @default(now())
+  quizzes      Quiz[]
+}
+
+model Quiz {
+  id         String   @id @default(cuid())
+  summary_id String
+  summary    Summary  @relation(fields: [summary_id], references: [id], onDelete: Cascade)
+  questions  String   // JSON stored as string in SQLite
+  created_at DateTime @default(now())
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  key_encrypted  String
+  provider       String
+  is_active      Boolean   @default(true)
+  last_used      DateTime?
+  fail_count     Int       @default(0)
+  disabled_until DateTime?
+}
