@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { FileUpload, MAX_FILE_SIZE } from "@/components/file-upload";
-import { Button, Card, CardContent, CardHeader } from "@/components/ui";
+import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
+import { parsePageRanges } from "@/lib/utils";
 
 function validateFile(file: File): string | null {
   // Check file type
@@ -24,9 +25,63 @@ function validateFile(file: File): string | null {
   return null;
 }
 
+// Get page count from PDF using pdf-lib (client-side compatible)
+async function getPdfPageCount(file: File): Promise<number> {
+  const { PDFDocument } = await import("pdf-lib");
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+  return pdfDoc.getPageCount();
+}
+
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pageCount, setPageCount] = useState<number | null>(null);
+  const [isLoadingPageCount, setIsLoadingPageCount] = useState(false);
+  const [excludePagesInput, setExcludePagesInput] = useState("");
+  const [excludePagesError, setExcludePagesError] = useState<string | null>(null);
+  const [excludedPages, setExcludedPages] = useState<number[]>([]);
+
+  // Load page count when file is selected
+  useEffect(() => {
+    if (!selectedFile) {
+      setPageCount(null);
+      setExcludePagesInput("");
+      setExcludePagesError(null);
+      setExcludedPages([]);
+      return;
+    }
+
+    setIsLoadingPageCount(true);
+    getPdfPageCount(selectedFile)
+      .then((count) => {
+        setPageCount(count);
+      })
+      .catch(() => {
+        setPageCount(null);
+      })
+      .finally(() => {
+        setIsLoadingPageCount(false);
+      });
+  }, [selectedFile]);
+
+  // Validate exclude pages input when it changes or page count changes
+  useEffect(() => {
+    if (!excludePagesInput.trim()) {
+      setExcludePagesError(null);
+      setExcludedPages([]);
+      return;
+    }
+
+    const result = parsePageRanges(excludePagesInput, pageCount ?? undefined);
+    if (result.error) {
+      setExcludePagesError(result.error);
+      setExcludedPages([]);
+    } else {
+      setExcludePagesError(null);
+      setExcludedPages(result.pages);
+    }
+  }, [excludePagesInput, pageCount]);
 
   const handleFileSelect = useCallback((file: File) => {
     const validationError = validateFile(file);
@@ -42,6 +97,10 @@ export default function UploadPage() {
   const handleClearFile = useCallback(() => {
     setSelectedFile(null);
     setError(null);
+    setPageCount(null);
+    setExcludePagesInput("");
+    setExcludePagesError(null);
+    setExcludedPages([]);
   }, []);
 
   return (
@@ -87,8 +146,63 @@ export default function UploadPage() {
               onClearFile={handleClearFile}
             />
 
-            {/* Action Button */}
+            {/* Page Exclusion Input - only show when file is selected */}
             {selectedFile && !error && (
+              <div className="space-y-4">
+                {/* Page count info */}
+                {isLoadingPageCount ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Analizzando il PDF...
+                  </p>
+                ) : pageCount !== null ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Il PDF contiene <span className="font-semibold">{pageCount}</span> {pageCount === 1 ? "pagina" : "pagine"}
+                  </p>
+                ) : null}
+
+                {/* Page exclusion input */}
+                <div>
+                  <Input
+                    label="Pagine da escludere (opzionale)"
+                    placeholder="es. 1-3, 5, 10-15"
+                    value={excludePagesInput}
+                    onChange={(e) => setExcludePagesInput(e.target.value)}
+                    error={excludePagesError ?? undefined}
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Inserisci i numeri di pagina o gli intervalli da saltare (es. &quot;1-3, 5, 10-15&quot;)
+                  </p>
+                </div>
+
+                {/* Preview of pages to process */}
+                {pageCount !== null && !excludePagesError && (
+                  <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+                    <div className="flex flex-col gap-2 text-sm sm:flex-row sm:justify-between">
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Pagine escluse: </span>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {excludedPages.length}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Pagine da processare: </span>
+                        <span className="font-semibold text-blue-600 dark:text-blue-400">
+                          {pageCount - excludedPages.length}
+                        </span>
+                      </div>
+                    </div>
+                    {excludedPages.length > 0 && excludedPages.length <= 20 && (
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Escluse: {excludedPages.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Button */}
+            {selectedFile && !error && !excludePagesError && (
               <div className="flex justify-center pt-4">
                 <Button variant="primary" className="px-8 py-3 text-lg">
                   Genera Riassunto
