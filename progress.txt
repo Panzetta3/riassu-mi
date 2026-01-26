@@ -962,3 +962,50 @@
 - Keys can be temporarily disabled (auto by failover system) or permanently deactivated
 - Reactivating a key resets fail_count and clears disabled_until
 - Next priority is US-029: Toast notifications
+
+---
+
+## 2026-01-26 - US-029: Toast notifications
+
+### What was done:
+- Created components/toast.tsx with complete toast notification system
+- Implemented ToastProvider context with toasts state management
+- Created useToast hook exposing success(), error(), and dismiss() functions
+- Toast features:
+  - Appears in top-right corner (fixed position, z-50)
+  - Auto-dismiss after 4 seconds
+  - Manual dismiss button
+  - Slide-in animation from the right
+  - Green styling for success toasts
+  - Red styling for error toasts
+  - Dark mode support
+  - Accessible with ARIA labels
+- Created components/providers.tsx as a client wrapper for the layout
+- Updated app/layout.tsx to wrap content with Providers
+- Added slide-in animation keyframes to globals.css
+- Integrated toast calls throughout the app:
+  - Login: success on login, error on failure
+  - Logout: success on logout, error on failure
+  - Register: error on failure (success shown on login page via redirect)
+  - Upload: success when summary generated, error on API failure
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/toast.tsx (new - Toast component, ToastProvider, useToast hook)
+- components/providers.tsx (new - client wrapper for providers)
+- app/layout.tsx (updated - added Providers wrapper)
+- app/globals.css (updated - added slide-in animation)
+- components/header.tsx (updated - added toast for logout)
+- app/login/page.tsx (updated - added toast for login success/error and registration)
+- app/register/page.tsx (updated - added toast for registration error)
+- app/upload/page.tsx (updated - added toast for upload success/error)
+- prd.json (updated - marked US-029 as passes: true)
+
+### Notes for next developer:
+- Import toast hook: `import { useToast } from '@/components/toast'`
+- Usage: `const toast = useToast(); toast.success("Message"); toast.error("Error");`
+- ToastProvider must wrap any component using useToast (already done in layout)
+- Toasts stack vertically, newest at top
+- The toast automatically dismisses, but user can dismiss manually
+- Multiple toasts can be shown at once
+- Next priority is US-030: Gestione errori e pagina 404

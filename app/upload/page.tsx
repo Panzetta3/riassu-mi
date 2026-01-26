@@ -8,6 +8,7 @@ import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
 import { DetailLevelSelector, DetailLevel } from "@/components/detail-level-selector";
 import { ProgressIndicator, ProgressStage } from "@/components/progress-indicator";
 import { parsePageRanges } from "@/lib/utils";
+import { useToast } from "@/components/toast";
 
 function validateFile(file: File): string | null {
   // Check file type
@@ -38,6 +39,7 @@ async function getPdfPageCount(file: File): Promise<number> {
 
 export default function UploadPage() {
   const router = useRouter();
+  const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -149,6 +151,7 @@ export default function UploadPage() {
 
       // Show saving stage briefly before redirect
       setProgressStage("saving");
+      toast.success("Riassunto generato con successo!");
 
       // Redirect to the summary page
       setTimeout(() => {
@@ -157,9 +160,11 @@ export default function UploadPage() {
 
     } catch (err) {
       setIsProcessing(false);
-      setApiError(err instanceof Error ? err.message : "Errore sconosciuto");
+      const errorMsg = err instanceof Error ? err.message : "Errore sconosciuto";
+      setApiError(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [selectedFile, detailLevel, excludePagesInput, router]);
+  }, [selectedFile, detailLevel, excludePagesInput, router, toast]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">

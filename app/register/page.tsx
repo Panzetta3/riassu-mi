@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
+import { useToast } from "@/components/toast";
 
 interface FormErrors {
   email?: string;
@@ -47,6 +48,7 @@ function validateForm(
 
 export default function RegisterPage() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -80,14 +82,18 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setApiError(data.error || "Errore durante la registrazione");
+        const errorMsg = data.error || "Errore durante la registrazione";
+        setApiError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
 
       // Redirect to login page on success
       router.push("/login?registered=true");
     } catch {
-      setApiError("Errore di connessione. Riprova più tardi.");
+      const errorMsg = "Errore di connessione. Riprova più tardi.";
+      setApiError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

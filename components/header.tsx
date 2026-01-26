@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui";
+import { useToast } from "@/components/toast";
 
 interface HeaderProps {
   user: { id: string; email: string } | null;
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   const router = useRouter();
+  const toast = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -21,11 +23,14 @@ export function Header({ user }: HeaderProps) {
       });
 
       if (response.ok) {
+        toast.success("Logout effettuato con successo");
         router.push("/");
         router.refresh();
+      } else {
+        toast.error("Errore durante il logout");
       }
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch {
+      toast.error("Errore di connessione");
     } finally {
       setIsLoggingOut(false);
     }

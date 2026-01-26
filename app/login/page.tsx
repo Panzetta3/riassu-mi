@@ -4,6 +4,7 @@ import { useState, FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
+import { useToast } from "@/components/toast";
 
 interface FormErrors {
   email?: string;
@@ -34,6 +35,7 @@ function validateForm(email: string, password: string): FormErrors {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
@@ -45,13 +47,14 @@ export default function LoginPage() {
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
       setShowRegisteredMessage(true);
+      toast.success("Registrazione completata! Ora puoi accedere.");
       // Hide message after 5 seconds
       const timer = setTimeout(() => {
         setShowRegisteredMessage(false);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [searchParams]);
+  }, [searchParams, toast]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -80,14 +83,19 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setApiError(data.error || "Errore durante il login");
+        const errorMsg = data.error || "Errore durante il login";
+        setApiError(errorMsg);
+        toast.error(errorMsg);
         return;
       }
 
       // Redirect to dashboard on success
+      toast.success("Login effettuato con successo!");
       router.push("/dashboard");
     } catch {
-      setApiError("Errore di connessione. Riprova più tardi.");
+      const errorMsg = "Errore di connessione. Riprova più tardi.";
+      setApiError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
