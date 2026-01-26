@@ -501,8 +501,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 30,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created app/not-found.tsx with consistent design matching the app style. Shows 404 icon, 'Pagina non trovata' message, description, and 'Torna alla Homepage' button. Created app/error.tsx as error boundary for React errors with 'Si è verificato un errore' message, retry button, and homepage link. Created app/global-error.tsx for catching root layout errors. All API routes already return JSON { error: 'messaggio leggibile' } format with Italian messages and never expose stack traces. Typecheck passes."
     }
   ]
 }

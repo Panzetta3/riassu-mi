@@ -1009,3 +1009,56 @@
 - The toast automatically dismisses, but user can dismiss manually
 - Multiple toasts can be shown at once
 - Next priority is US-030: Gestione errori e pagina 404
+
+---
+
+## 2026-01-26 - US-030: Gestione errori e pagina 404
+
+### What was done:
+- Created app/not-found.tsx for 404 "Page Not Found" page
+- Created app/error.tsx as error boundary for React errors
+- Created app/global-error.tsx for catching errors in root layout
+- Verified all API routes already return proper JSON error responses
+
+### not-found.tsx features:
+- 404 icon with sad face emoticon in a circular container
+- Large "404" heading
+- "Pagina non trovata" title
+- Descriptive text: "La pagina che stai cercando non esiste o è stata spostata."
+- "Torna alla Homepage" button linking to "/"
+- Consistent design with app gradient background
+- Dark mode support
+
+### error.tsx features:
+- Warning triangle icon in red circular container
+- "Si è verificato un errore" title
+- Descriptive text: "Qualcosa è andato storto. Riprova o torna alla homepage."
+- "Riprova" button that calls the reset() function
+- "Torna alla Homepage" button
+- Logs error to console (for error reporting service)
+- Dark mode support
+
+### global-error.tsx features:
+- Same design as error.tsx but includes full html/body tags
+- Required for catching errors that occur in root layout
+- Uses inline button styles (cannot import components in global error)
+
+### API error handling (already implemented):
+- All API routes return JSON: { error: 'messaggio leggibile' }
+- Errors are logged to console but never exposed to users
+- Italian error messages throughout
+- Proper HTTP status codes (400, 401, 403, 404, 500)
+
+### Files created/modified:
+- app/not-found.tsx (new - 404 page)
+- app/error.tsx (new - error boundary)
+- app/global-error.tsx (new - global error boundary)
+- prd.json (updated - marked US-030 as passes: true)
+
+### Notes for next developer:
+- The not-found.tsx page is automatically used by Next.js when notFound() is called
+- error.tsx catches errors in route segments and their children
+- global-error.tsx catches errors in the root layout itself
+- Both error pages provide retry functionality through Next.js reset mechanism
+- All pages use consistent design language with the rest of the app
+- PRD is now COMPLETE - all 30 user stories have been implemented
