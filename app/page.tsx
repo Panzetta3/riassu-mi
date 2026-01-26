@@ -3,9 +3,9 @@ import { Button } from "@/components/ui";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+    <div className="flex min-h-[calc(100vh-73px)] flex-col bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
       {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center px-4 py-20 text-center sm:py-32">
+      <section className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:py-24">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
           Riassu<span className="text-blue-600">.mi</span>
         </h1>

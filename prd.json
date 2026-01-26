@@ -450,8 +450,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 27,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created components/header.tsx with responsive navigation. Logo 'Riassu.mi' links to homepage. Guest users see 'Accedi' and 'Registrati' buttons. Logged-in users see 'Dashboard' link and 'Esci' button. Created /api/auth/logout endpoint that calls destroySession() and redirects to homepage. Header added to layout.tsx via HeaderWrapper server component that fetches session data. Header present on all pages. Responsive design with dark mode support. Typecheck passes."
     },
     {
       "id": "US-028",

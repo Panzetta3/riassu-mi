@@ -883,3 +883,37 @@
 - Delete button uses e.preventDefault() and e.stopPropagation() to prevent Link navigation
 - Error messages from API are displayed in the modal
 - Next priority is US-027: Header con navigazione e stato auth
+
+---
+
+## 2026-01-26 - US-027: Header con navigazione e stato auth
+
+### What was done:
+- Created components/header.tsx with responsive navigation
+- Header displays logo "Riassu.mi" that links to homepage
+- For guests: shows "Accedi" and "Registrati" buttons
+- For logged-in users: shows "Dashboard" link and "Esci" button
+- Created HeaderWrapper server component (components/header-wrapper.tsx) to fetch session data
+- Created logout API endpoint at app/api/auth/logout/route.ts
+  - Calls destroySession() from lib/auth.ts to clear the session cookie
+  - Returns JSON success response
+- Added HeaderWrapper to app/layout.tsx so header appears on all pages
+- Updated homepage (app/page.tsx) to adjust height calculation for header
+- Changed html lang attribute from "en" to "it" for Italian language
+- Logout button shows loading state during logout process
+- Responsive design with dark mode support
+- Typecheck passes successfully
+
+### Files created/modified:
+- components/header.tsx (new - client component for navigation header)
+- components/header-wrapper.tsx (new - server component wrapper to fetch session)
+- app/api/auth/logout/route.ts (new - logout API endpoint)
+- app/layout.tsx (updated - added HeaderWrapper, changed lang to "it")
+- app/page.tsx (updated - adjusted height calculation for header)
+
+### Notes for next developer:
+- Header uses HeaderWrapper pattern: server component fetches session, passes to client component
+- Logout redirects to "/" and calls router.refresh() to update header state
+- The header height is approximately 73px (py-4 + content); pages should use min-h-[calc(100vh-73px)] if they want full height
+- The Button component from @/components/ui is used for consistent styling
+- Next priority is US-028: Pagina admin gestione API key
