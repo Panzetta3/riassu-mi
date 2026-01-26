@@ -917,3 +917,48 @@
 - The header height is approximately 73px (py-4 + content); pages should use min-h-[calc(100vh-73px)] if they want full height
 - The Button component from @/components/ui is used for consistent styling
 - Next priority is US-028: Pagina admin gestione API key
+
+---
+
+## 2026-01-26 - US-028: Pagina admin gestione API key
+
+### What was done:
+- Created /admin/api-keys page for managing OpenRouter API keys
+- Page is protected by ADMIN_EMAIL environment variable
+- Server component (page.tsx) verifies:
+  - ADMIN_EMAIL is configured (shows config error if not)
+  - User is authenticated (redirects to login if not)
+  - User email matches ADMIN_EMAIL (shows access denied if not)
+- Created API routes:
+  - GET /api/admin/api-keys - Lists all API keys with masked values
+  - POST /api/admin/api-keys - Adds new API key
+  - DELETE /api/admin/api-keys/[id] - Permanently deletes an API key
+  - PATCH /api/admin/api-keys/[id] - Reactivates or deactivates an API key
+- Client component (api-key-list.tsx) features:
+  - Add new key form with password input type for security
+  - List of keys showing: last 4 chars, status badge, provider, fail_count, last_used, disabled_until
+  - Status badges: Attiva (green), Disattivata (gray), Temp. disabilitata (orange)
+  - Reactivate/Deactivate toggle button for each key
+  - Delete button with confirmation modal
+  - Loading states and error handling throughout
+- Updated middleware.ts to protect /admin routes
+- Added ADMIN_EMAIL to .env as commented example
+- Responsive design with dark mode support
+- Typecheck passes successfully
+
+### Files created/modified:
+- app/admin/api-keys/page.tsx (new - admin page server component)
+- app/admin/api-keys/api-key-list.tsx (new - API key list client component)
+- app/api/admin/api-keys/route.ts (new - GET/POST endpoints for API keys)
+- app/api/admin/api-keys/[id]/route.ts (new - DELETE/PATCH endpoints for individual keys)
+- middleware.ts (updated - added /admin to protected routes)
+- .env (updated - added ADMIN_EMAIL example)
+- prd.json (updated - marked US-028 as passes: true)
+
+### Notes for next developer:
+- To access the admin page, set ADMIN_EMAIL in .env to match a registered user's email
+- The page decrypts keys server-side to show last 4 characters (never exposes full key)
+- API routes use the same admin verification pattern as the page
+- Keys can be temporarily disabled (auto by failover system) or permanently deactivated
+- Reactivating a key resets fail_count and clears disabled_until
+- Next priority is US-029: Toast notifications

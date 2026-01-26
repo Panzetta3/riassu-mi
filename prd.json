@@ -467,8 +467,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 28,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Completed: Created /admin/api-keys page protected by ADMIN_EMAIL environment variable. Server component verifies session and checks if user email matches ADMIN_EMAIL. Shows configuration error if ADMIN_EMAIL not set, access denied if user is not admin. API routes created at /api/admin/api-keys (GET for list, POST for add) and /api/admin/api-keys/[id] (DELETE for remove, PATCH for reactivate/deactivate). Client component displays keys with last 4 chars masked, status badges (Attiva/Disattivata/Temp. disabilitata), fail_count, last_used date, disabled_until. Add form with password input type for security. Delete confirmation modal. Reactivate/deactivate toggle button. Middleware updated to protect /admin routes. ADMIN_EMAIL added to .env as commented example. Typecheck passes."
     },
     {
       "id": "US-029",

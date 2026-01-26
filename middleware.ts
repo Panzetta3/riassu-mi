@@ -5,7 +5,7 @@ const SESSION_COOKIE_NAME = "session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7 * 1000; // 7 days in milliseconds
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/dashboard"];
+const PROTECTED_ROUTES = ["/dashboard", "/admin"];
 
 // Routes that are always accessible (no redirect even if not authenticated)
 const PUBLIC_ROUTES = ["/", "/upload", "/login", "/register", "/summary", "/quiz"];
