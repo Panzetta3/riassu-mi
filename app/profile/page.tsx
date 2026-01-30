@@ -12,6 +12,7 @@ interface UserProfile {
   email: string;
   email_verified: boolean;
   created_at: string;
+  isAdmin: boolean;
 }
 
 export default function ProfilePage() {
@@ -205,6 +206,41 @@ export default function ProfilePage() {
                   {createdDate}
                 </p>
               </div>
+
+              {/* Admin section */}
+              {user.isAdmin && (
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Pannello Admin
+                  </label>
+                  <div className="mt-3 space-y-2">
+                    <Link
+                      href="/admin/api-keys"
+                      className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      <svg className="h-5 w-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                      <div>
+                        <p className="font-medium">Gestione API Keys</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Aggiungi e gestisci le chiavi API</p>
+                      </div>
+                    </Link>
+                    <Link
+                      href="/admin/users"
+                      className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    >
+                      <svg className="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <div>
+                        <p className="font-medium">Gestione Utenti</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Visualizza e gestisci gli utenti</p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               {/* Logout button */}
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
