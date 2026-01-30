@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type ToastType = "success" | "error";
+export type ToastType = "success" | "error" | "warning";
 
 export interface Toast {
   id: string;
@@ -20,6 +20,7 @@ interface ToastContextValue {
   toasts: Toast[];
   success: (message: string) => void;
   error: (message: string) => void;
+  warning: (message: string) => void;
   dismiss: (id: string) => void;
 }
 
@@ -59,8 +60,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [addToast]
   );
 
+  const warning = useCallback(
+    (message: string) => addToast("warning", message),
+    [addToast]
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, success, error, dismiss }}>
+    <ToastContext.Provider value={{ toasts, success, error, warning, dismiss }}>
       {children}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
@@ -106,54 +112,63 @@ function ToastItem({
   toast: Toast;
   onDismiss: (id: string) => void;
 }) {
-  const isSuccess = toast.type === "success";
+  const getStyles = () => {
+    switch (toast.type) {
+      case "success":
+        return {
+          container: "bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800",
+          icon: "text-green-500 dark:text-green-400",
+          button: "hover:bg-green-200 dark:hover:bg-green-800",
+        };
+      case "warning":
+        return {
+          container: "bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-800",
+          icon: "text-amber-500 dark:text-amber-400",
+          button: "hover:bg-amber-200 dark:hover:bg-amber-800",
+        };
+      case "error":
+      default:
+        return {
+          container: "bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800",
+          icon: "text-red-500 dark:text-red-400",
+          button: "hover:bg-red-200 dark:hover:bg-red-800",
+        };
+    }
+  };
+
+  const styles = getStyles();
+
+  const renderIcon = () => {
+    switch (toast.type) {
+      case "success":
+        return (
+          <svg className={`w-5 h-5 ${styles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
+      case "warning":
+        return (
+          <svg className={`w-5 h-5 ${styles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        );
+      case "error":
+      default:
+        return (
+          <svg className={`w-5 h-5 ${styles.icon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+    }
+  };
 
   return (
     <div
-      className={`
-        flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg
-        min-w-[280px] max-w-[400px]
-        animate-slide-in
-        ${
-          isSuccess
-            ? "bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800"
-            : "bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/30 dark:text-red-200 dark:border-red-800"
-        }
-      `}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[280px] max-w-[400px] animate-slide-in ${styles.container}`}
       role="alert"
     >
       {/* Icon */}
-      <span className="flex-shrink-0">
-        {isSuccess ? (
-          <svg
-            className="w-5 h-5 text-green-500 dark:text-green-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        ) : (
-          <svg
-            className="w-5 h-5 text-red-500 dark:text-red-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        )}
-      </span>
+      <span className="flex-shrink-0">{renderIcon()}</span>
 
       {/* Message */}
       <p className="flex-1 text-sm font-medium">{toast.message}</p>
@@ -161,28 +176,11 @@ function ToastItem({
       {/* Dismiss button */}
       <button
         onClick={() => onDismiss(toast.id)}
-        className={`
-          flex-shrink-0 p-1 rounded-full transition-colors
-          ${
-            isSuccess
-              ? "hover:bg-green-200 dark:hover:bg-green-800"
-              : "hover:bg-red-200 dark:hover:bg-red-800"
-          }
-        `}
+        className={`flex-shrink-0 p-1 rounded-full transition-colors ${styles.button}`}
         aria-label="Chiudi notifica"
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M6 18L18 6M6 6l12 12"
-          />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>

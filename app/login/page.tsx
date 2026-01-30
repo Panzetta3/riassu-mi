@@ -41,6 +41,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isWarning, setIsWarning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRegisteredMessage, setShowRegisteredMessage] = useState(false);
 
@@ -66,7 +67,7 @@ function LoginForm() {
     } else if (error === "verification_failed") {
       toast.error("Errore durante la verifica. Riprova più tardi.");
     } else if (error === "email_not_verified") {
-      toast.error("Verifica la tua email prima di accedere.");
+      toast.warning("Verifica la tua email prima di accedere.");
     }
 
     // Hide message after 5 seconds
@@ -80,6 +81,7 @@ function LoginForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setApiError(null);
+    setIsWarning(false);
     setShowRegisteredMessage(false);
 
     // Client-side validation
@@ -106,7 +108,14 @@ function LoginForm() {
       if (!response.ok) {
         const errorMsg = data.error || "Errore durante il login";
         setApiError(errorMsg);
-        toast.error(errorMsg);
+        // Show as warning for email verification issues (403)
+        if (response.status === 403) {
+          setIsWarning(true);
+          toast.warning(errorMsg);
+        } else {
+          setIsWarning(false);
+          toast.error(errorMsg);
+        }
         return;
       }
 
@@ -182,24 +191,45 @@ function LoginForm() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* API Error Message */}
+              {/* API Error/Warning Message */}
               {apiError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <div className={`rounded-lg border p-4 ${
+                  isWarning
+                    ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
+                    : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20"
+                }`}>
                   <div className="flex items-start gap-3">
                     <svg
-                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500 dark:text-red-400"
+                      className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                        isWarning
+                          ? "text-amber-500 dark:text-amber-400"
+                          : "text-red-500 dark:text-red-400"
+                      }`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
+                      {isWarning ? (
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      ) : (
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      )}
                     </svg>
-                    <p className="text-sm text-red-700 dark:text-red-300">
+                    <p className={`text-sm ${
+                      isWarning
+                        ? "text-amber-700 dark:text-amber-300"
+                        : "text-red-700 dark:text-red-300"
+                    }`}>
                       {apiError}
                     </p>
                   </div>
