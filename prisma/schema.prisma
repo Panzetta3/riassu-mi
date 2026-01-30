@@ -7,15 +7,18 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password_hash String
-  created_at    DateTime  @default(now())
-  summaries     Summary[]
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  password_hash      String
+  email_verified     Boolean   @default(false)
+  verification_token String?   @unique
+  token_expires_at   DateTime?
+  created_at         DateTime  @default(now())
+  summaries          Summary[]
 }
 
 model Summary {
@@ -23,7 +26,7 @@ model Summary {
   user_id      String?
   user         User?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   title        String
-  content      String
+  content      String   @db.Text
   detail_level String
   pdf_name     String
   created_at   DateTime @default(now())
@@ -34,7 +37,7 @@ model Quiz {
   id         String   @id @default(cuid())
   summary_id String
   summary    Summary  @relation(fields: [summary_id], references: [id], onDelete: Cascade)
-  questions  String   // JSON stored as string in SQLite
+  questions  String   @db.Text
   created_at DateTime @default(now())
 }
 

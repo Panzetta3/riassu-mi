@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if email is verified
+    if (!user.email_verified) {
+      return NextResponse.json(
+        { error: "Verifica la tua email prima di accedere. Controlla la tua casella di posta." },
+        { status: 403 }
+      );
+    }
+
     // Create session (sets HTTP-only cookie)
     await createSession(user.id);
 

@@ -3,29 +3,32 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileUpload, MAX_FILE_SIZE } from "@/components/file-upload";
+import { FileUpload, MAX_FILE_SIZE, MAX_IMAGE_SIZE, isImageFile, isPdfFile, FileType } from "@/components/file-upload";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
 import { DetailLevelSelector, DetailLevel } from "@/components/detail-level-selector";
 import { ProgressIndicator, ProgressStage } from "@/components/progress-indicator";
 import { parsePageRanges } from "@/lib/utils";
 import { useToast } from "@/components/toast";
 
-function validateFile(file: File): string | null {
-  // Check file type
-  if (!file.name.toLowerCase().endsWith(".pdf")) {
-    return "Il file deve essere in formato PDF";
+function validateFile(file: File, type: FileType): string | null {
+  if (type === "pdf") {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      return "Il file deve essere in formato PDF";
+    }
+    if (file.type !== "application/pdf") {
+      return "Il file deve essere un PDF valido";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return "Il file supera il limite di 2GB";
+    }
+  } else if (type === "image") {
+    if (!isImageFile(file)) {
+      return "Il file deve essere un'immagine valida (JPG, PNG)";
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      return "L'immagine supera il limite di 20MB";
+    }
   }
-
-  // Check MIME type (additional validation)
-  if (file.type !== "application/pdf") {
-    return "Il file deve essere un PDF valido";
-  }
-
-  // Check file size
-  if (file.size > MAX_FILE_SIZE) {
-    return "Il file supera il limite di 20MB";
-  }
-
   return null;
 }
 
@@ -37,10 +40,29 @@ async function getPdfPageCount(file: File): Promise<number> {
   return pdfDoc.getPageCount();
 }
 
+// Run OCR on image using tesseract.js
+async function extractTextFromImage(
+  file: File,
+  onProgress: (progress: number) => void
+): Promise<string> {
+  const Tesseract = await import("tesseract.js");
+
+  const result = await Tesseract.recognize(file, "ita+eng", {
+    logger: (m) => {
+      if (m.status === "recognizing text") {
+        onProgress(Math.round(m.progress * 100));
+      }
+    },
+  });
+
+  return result.data.text;
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileType, setFileType] = useState<FileType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [isLoadingPageCount, setIsLoadingPageCount] = useState(false);
@@ -52,9 +74,14 @@ export default function UploadPage() {
   const [progressStage, setProgressStage] = useState<ProgressStage>("analyzing");
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Load page count when file is selected
+  // Image OCR state
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+
+  // Load page count when PDF is selected
   useEffect(() => {
-    if (!selectedFile) {
+    if (!selectedFile || fileType !== "pdf") {
       setPageCount(null);
       setExcludePagesInput("");
       setExcludePagesError(null);
@@ -73,7 +100,7 @@ export default function UploadPage() {
       .finally(() => {
         setIsLoadingPageCount(false);
       });
-  }, [selectedFile]);
+  }, [selectedFile, fileType]);
 
   // Validate exclude pages input when it changes or page count changes
   useEffect(() => {
@@ -93,25 +120,64 @@ export default function UploadPage() {
     }
   }, [excludePagesInput, pageCount]);
 
-  const handleFileSelect = useCallback((file: File) => {
-    const validationError = validateFile(file);
+  const handleFileSelect = useCallback(async (file: File, type: FileType) => {
+    const validationError = validateFile(file, type);
     if (validationError) {
       setError(validationError);
       setSelectedFile(null);
-    } else {
-      setError(null);
+      setFileType(null);
+      setExtractedText(null);
+      return;
+    }
+
+    setError(null);
+    setApiError(null);
+
+    if (type === "image") {
+      // Process image with OCR
+      setIsProcessingImage(true);
+      setOcrProgress(0);
       setSelectedFile(file);
+      setFileType(type);
+
+      try {
+        const text = await extractTextFromImage(file, setOcrProgress);
+
+        if (!text.trim()) {
+          setError("Nessun testo rilevato nell'immagine. Riprova con un'immagine più chiara.");
+          setSelectedFile(null);
+          setFileType(null);
+          setExtractedText(null);
+        } else {
+          setExtractedText(text);
+        }
+      } catch (err) {
+        console.error("OCR error:", err);
+        setError("Errore durante l'estrazione del testo dall'immagine");
+        setSelectedFile(null);
+        setFileType(null);
+        setExtractedText(null);
+      } finally {
+        setIsProcessingImage(false);
+      }
+    } else {
+      // PDF file
+      setSelectedFile(file);
+      setFileType(type);
+      setExtractedText(null);
     }
   }, []);
 
   const handleClearFile = useCallback(() => {
     setSelectedFile(null);
+    setFileType(null);
     setError(null);
     setPageCount(null);
     setExcludePagesInput("");
     setExcludePagesError(null);
     setExcludedPages([]);
     setApiError(null);
+    setExtractedText(null);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -122,26 +188,47 @@ export default function UploadPage() {
     setProgressStage("analyzing");
 
     try {
-      // Build form data
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("detailLevel", detailLevel);
-      if (excludePagesInput.trim()) {
-        formData.append("excludePages", excludePagesInput);
+      let response: Response;
+
+      if (fileType === "image" && extractedText) {
+        // For images, send the extracted text
+        const stageTimer = setTimeout(() => {
+          setProgressStage("generating");
+        }, 500);
+
+        response = await fetch("/api/summarize-text", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: extractedText,
+            detailLevel,
+            title: selectedFile.name.replace(/\.[^.]+$/, ""),
+          }),
+        });
+
+        clearTimeout(stageTimer);
+      } else {
+        // For PDFs, send the file
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("detailLevel", detailLevel);
+        if (excludePagesInput.trim()) {
+          formData.append("excludePages", excludePagesInput);
+        }
+
+        const stageTimer = setTimeout(() => {
+          setProgressStage("generating");
+        }, 1500);
+
+        response = await fetch("/api/summarize", {
+          method: "POST",
+          body: formData,
+        });
+
+        clearTimeout(stageTimer);
       }
-
-      // Update progress stage after a brief moment to show "Analyzing"
-      const stageTimer = setTimeout(() => {
-        setProgressStage("generating");
-      }, 1500);
-
-      // Call the API
-      const response = await fetch("/api/summarize", {
-        method: "POST",
-        body: formData,
-      });
-
-      clearTimeout(stageTimer);
 
       const data = await response.json();
 
@@ -164,7 +251,10 @@ export default function UploadPage() {
       setApiError(errorMsg);
       toast.error(errorMsg);
     }
-  }, [selectedFile, detailLevel, excludePagesInput, router, toast]);
+  }, [selectedFile, fileType, extractedText, detailLevel, excludePagesInput, router, toast]);
+
+  const canSubmit = selectedFile && !error && !excludePagesError &&
+    (fileType === "pdf" || (fileType === "image" && extractedText));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
@@ -193,26 +283,45 @@ export default function UploadPage() {
         <Card>
           <CardHeader>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Carica il tuo PDF
+              Carica il tuo documento
             </h1>
             <p className="mt-1 text-gray-600 dark:text-gray-400">
-              Seleziona un file PDF per generare un riassunto intelligente
+              Seleziona un PDF o scatta una foto per generare un riassunto
             </p>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Show Progress Indicator when processing */}
             {isProcessing ? (
-              <ProgressIndicator stage={progressStage} />
+              <ProgressIndicator stage={progressStage} pageCount={pageCount ?? undefined} />
             ) : (
               <>
                 {/* File Upload Component */}
                 <FileUpload
                   onFileSelect={handleFileSelect}
                   selectedFile={selectedFile}
+                  fileType={fileType}
                   error={error}
                   onClearFile={handleClearFile}
+                  isProcessingImage={isProcessingImage}
+                  ocrProgress={ocrProgress}
                 />
+
+                {/* Extracted text preview for images */}
+                {fileType === "image" && extractedText && (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Testo rilevato:
+                    </p>
+                    <p className="max-h-32 overflow-y-auto text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                      {extractedText.slice(0, 500)}
+                      {extractedText.length > 500 && "..."}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                      {extractedText.length} caratteri estratti
+                    </p>
+                  </div>
+                )}
 
                 {/* API Error Message */}
                 {apiError && (
@@ -243,8 +352,8 @@ export default function UploadPage() {
                   </div>
                 )}
 
-                {/* Page Exclusion Input - only show when file is selected */}
-                {selectedFile && !error && (
+                {/* PDF-specific options */}
+                {fileType === "pdf" && selectedFile && !error && (
                   <div className="space-y-4">
                     {/* Page count info */}
                     {isLoadingPageCount ? (
@@ -295,17 +404,19 @@ export default function UploadPage() {
                         )}
                       </div>
                     )}
-
-                    {/* Detail Level Selector */}
-                    <DetailLevelSelector
-                      value={detailLevel}
-                      onChange={setDetailLevel}
-                    />
                   </div>
                 )}
 
+                {/* Detail Level Selector - show for both PDF and images */}
+                {selectedFile && !error && (fileType === "pdf" || extractedText) && (
+                  <DetailLevelSelector
+                    value={detailLevel}
+                    onChange={setDetailLevel}
+                  />
+                )}
+
                 {/* Action Button */}
-                {selectedFile && !error && !excludePagesError && (
+                {canSubmit && (
                   <div className="flex justify-center pt-4">
                     <Button
                       variant="primary"

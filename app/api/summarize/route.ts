@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractText, PDFExtractionError } from '@/lib/pdf-parser'
-import { generateSummaryWithChunking, OpenRouterError } from '@/lib/openrouter'
+import { generateSummaryByPageGroups, OpenRouterError } from '@/lib/openrouter'
 import { parsePageRanges } from '@/lib/utils'
 import { getSession } from '@/lib/auth'
 import type { DetailLevel } from '@/components/detail-level-selector'
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 const VALID_DETAIL_LEVELS: DetailLevel[] = ['brief', 'medium', 'detailed']
 
 interface SummarizeResponse {
@@ -60,7 +60,7 @@ export async function POST(
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: 'Il file supera la dimensione massima di 20MB' },
+        { error: 'Il file supera la dimensione massima di 2GB' },
         { status: 400 }
       )
     }
@@ -116,23 +116,20 @@ export async function POST(
       throw error
     }
 
-    // Combine all page text into a single string
-    const fullText = pages
-      .map(p => p.text)
-      .filter(t => t.length > 0)
-      .join('\n\n')
+    // Check if there's any text to summarize
+    const hasText = pages.some(p => p.text.trim().length > 0)
 
-    if (!fullText.trim()) {
+    if (!hasText) {
       return NextResponse.json(
         { error: 'Il PDF non contiene testo estraibile' },
         { status: 400 }
       )
     }
 
-    // Generate summary using OpenRouter with automatic chunking
+    // Generate summary using OpenRouter with page-based chunking (groups of 4 pages)
     let summaryContent: string
     try {
-      summaryContent = await generateSummaryWithChunking(fullText, detailLevel)
+      summaryContent = await generateSummaryByPageGroups(pages, detailLevel, 4)
     } catch (error) {
       if (error instanceof OpenRouterError) {
         // Return a user-friendly error message

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
 import { useToast } from "@/components/toast";
+import { Spinner } from "@/components/ui";
 
 interface FormErrors {
   email?: string;
@@ -32,7 +33,7 @@ function validateForm(email: string, password: string): FormErrors {
   return errors;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -43,18 +44,38 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showRegisteredMessage, setShowRegisteredMessage] = useState(false);
 
-  // Check for registered query parameter
+  // Check for query parameters
   useEffect(() => {
-    if (searchParams.get("registered") === "true") {
+    const registered = searchParams.get("registered");
+    const verified = searchParams.get("verified");
+    const error = searchParams.get("error");
+
+    if (registered === "true" && !showRegisteredMessage) {
       setShowRegisteredMessage(true);
-      toast.success("Registrazione completata! Ora puoi accedere.");
-      // Hide message after 5 seconds
-      const timer = setTimeout(() => {
-        setShowRegisteredMessage(false);
-      }, 5000);
-      return () => clearTimeout(timer);
+      toast.success("Registrazione completata! Controlla la tua email per verificare l'account.");
+    } else if (verified === "success") {
+      toast.success("Email verificata con successo! Ora puoi accedere.");
+    } else if (verified === "already") {
+      toast.success("Email già verificata. Puoi accedere.");
+    } else if (error === "missing_token") {
+      toast.error("Link di verifica non valido.");
+    } else if (error === "invalid_token") {
+      toast.error("Link di verifica non valido o già utilizzato.");
+    } else if (error === "token_expired") {
+      toast.error("Il link di verifica è scaduto. Registrati di nuovo.");
+    } else if (error === "verification_failed") {
+      toast.error("Errore durante la verifica. Riprova più tardi.");
+    } else if (error === "email_not_verified") {
+      toast.error("Verifica la tua email prima di accedere.");
     }
-  }, [searchParams, toast]);
+
+    // Hide message after 5 seconds
+    const timer = setTimeout(() => {
+      setShowRegisteredMessage(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -269,5 +290,19 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+          <Spinner size="lg" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

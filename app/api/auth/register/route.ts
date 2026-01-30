@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
+import { generateVerificationToken, getTokenExpiration, sendVerificationEmail } from "@/lib/email";
 
 interface RegisterRequest {
   email: string;
@@ -52,18 +53,33 @@ export async function POST(request: NextRequest) {
     // Hash password with bcrypt (10 rounds is a good default)
     const password_hash = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Generate verification token
+    const verification_token = generateVerificationToken();
+    const token_expires_at = getTokenExpiration();
+
+    // Create user with verification token
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
         password_hash,
+        email_verified: false,
+        verification_token,
+        token_expires_at,
       },
     });
 
+    // Send verification email
+    const emailSent = await sendVerificationEmail(email.toLowerCase(), verification_token);
+
+    if (!emailSent) {
+      console.error("Failed to send verification email, but user was created");
+    }
+
     return NextResponse.json(
       {
-        message: "Registrazione completata con successo",
-        userId: user.id
+        message: "Registrazione completata! Controlla la tua email per verificare l'account.",
+        userId: user.id,
+        requiresVerification: true
       },
       { status: 201 }
     );

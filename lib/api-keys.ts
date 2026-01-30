@@ -6,9 +6,10 @@ const IV_LENGTH = 16
 const AUTH_TAG_LENGTH = 16
 const SALT_LENGTH = 32
 
-// Fail threshold: disable key for 1 hour after 5 failures
-const MAX_FAIL_COUNT = 5
-const DISABLE_DURATION_MS = 60 * 60 * 1000 // 1 hour
+// Fail threshold: disable key temporarily after failures
+const MAX_FAIL_COUNT = 3 // Reduced from 5
+const DISABLE_DURATION_MS = 60 * 60 * 1000 // 1 hour for permanent disable
+const TEMP_DISABLE_MS = 5 * 60 * 1000 // 5 minutes temporary disable on rate limit
 
 function getEncryptionKey(): Buffer {
   const key = process.env.ENCRYPTION_KEY
@@ -142,9 +143,13 @@ export async function getActiveKeyWithId(): Promise<{ id: string; key: string } 
 
 /**
  * Marks an API key as failed.
- * Increments fail_count and disables the key for 1 hour if fail_count > 5.
+ * If isRateLimit is true, temporarily disables the key for 5 minutes.
+ * If fail_count exceeds threshold, disables for 1 hour.
+ *
+ * @param keyId - The ID of the key to mark as failed
+ * @param isRateLimit - If true, temporarily disable immediately to allow failover
  */
-export async function markKeyFailed(keyId: string): Promise<void> {
+export async function markKeyFailed(keyId: string, isRateLimit: boolean = false): Promise<void> {
   const apiKey = await prisma.apiKey.findUnique({
     where: { id: keyId }
   })
@@ -154,15 +159,23 @@ export async function markKeyFailed(keyId: string): Promise<void> {
   }
 
   const newFailCount = apiKey.fail_count + 1
-  const shouldDisable = newFailCount > MAX_FAIL_COUNT
+  const shouldPermanentlyDisable = newFailCount > MAX_FAIL_COUNT
+
+  let disabledUntil: Date | null = apiKey.disabled_until
+
+  if (shouldPermanentlyDisable) {
+    // Disable for 1 hour after too many failures
+    disabledUntil = new Date(Date.now() + DISABLE_DURATION_MS)
+  } else if (isRateLimit) {
+    // Temporarily disable for 5 minutes on rate limit to force failover
+    disabledUntil = new Date(Date.now() + TEMP_DISABLE_MS)
+  }
 
   await prisma.apiKey.update({
     where: { id: keyId },
     data: {
       fail_count: newFailCount,
-      disabled_until: shouldDisable
-        ? new Date(Date.now() + DISABLE_DURATION_MS)
-        : apiKey.disabled_until
+      disabled_until: disabledUntil
     }
   })
 }

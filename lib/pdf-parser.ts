@@ -1,4 +1,6 @@
 import { PDFParse } from 'pdf-parse'
+import Tesseract from 'tesseract.js'
+import { pdf } from 'pdf-to-img'
 
 export interface PageText {
   pageNumber: number
@@ -18,13 +20,69 @@ export class PDFExtractionError extends Error {
 }
 
 /**
+ * Extract text from PDF pages using OCR (Tesseract.js)
+ * Uses pdf-to-img to convert PDF pages to images
+ */
+async function extractTextWithOCR(
+  buffer: Buffer | Uint8Array,
+  pagesToParse: number[]
+): Promise<PageText[]> {
+  const data = buffer instanceof Buffer ? buffer : Buffer.from(buffer)
+
+  const pages: PageText[] = []
+  const pageSet = new Set(pagesToParse)
+
+  let pageNum = 0
+
+  // pdf-to-img returns an async iterator of page images
+  const document = await pdf(data, { scale: 2.0 })
+
+  for await (const image of document) {
+    pageNum++
+
+    // Skip pages not in our list
+    if (!pageSet.has(pageNum)) {
+      continue
+    }
+
+    try {
+      console.log(`OCR processing page ${pageNum}...`)
+
+      // Run OCR on the image buffer
+      const result = await Tesseract.recognize(image, 'ita+eng', {
+        logger: () => {} // Suppress progress logs
+      })
+
+      pages.push({
+        pageNumber: pageNum,
+        text: result.data.text.trim()
+      })
+
+      console.log(`OCR page ${pageNum} completed, extracted ${result.data.text.length} chars`)
+    } catch (error) {
+      console.error(`OCR failed for page ${pageNum}:`, error)
+      pages.push({
+        pageNumber: pageNum,
+        text: ''
+      })
+    }
+  }
+
+  // Sort pages by page number
+  pages.sort((a, b) => a.pageNumber - b.pageNumber)
+
+  return pages
+}
+
+/**
  * Extracts text from a PDF buffer, returning an array of { pageNumber, text } for each page.
  * Supports excluding specific pages via the excludePages parameter.
+ * Falls back to OCR if the PDF contains scanned images instead of text.
  *
  * @param buffer - The PDF file as a Buffer or Uint8Array
  * @param excludePages - Optional array of page numbers to exclude (1-indexed)
  * @returns Array of { pageNumber, text } for each extracted page
- * @throws PDFExtractionError if the PDF has no extractable text
+ * @throws PDFExtractionError if the PDF has no extractable text even with OCR
  */
 export async function extractText(
   buffer: Buffer | Uint8Array,
@@ -64,17 +122,29 @@ export async function extractText(
     })
 
     // Map the results to our format
-    const pages: PageText[] = textResult.pages.map((page) => ({
+    let pages: PageText[] = textResult.pages.map((page) => ({
       pageNumber: page.num,
       text: page.text.trim()
     }))
 
     // Check if any extractable text was found
     const hasText = pages.some(page => page.text.length > 0)
+
+    // If no text found, try OCR
     if (!hasText) {
-      throw new PDFExtractionError(
-        'PDF does not contain extractable text. The PDF may be scanned images or have protected content.'
-      )
+      console.log('No text found in PDF, attempting OCR...')
+      await parser.destroy() // Clean up before OCR
+
+      pages = await extractTextWithOCR(buffer, pagesToParse)
+
+      const hasOcrText = pages.some(page => page.text.length > 0)
+      if (!hasOcrText) {
+        throw new PDFExtractionError(
+          'Impossibile estrarre testo dal PDF. Il documento potrebbe essere protetto o contenere solo immagini non riconoscibili.'
+        )
+      }
+
+      return pages
     }
 
     return pages
@@ -126,16 +196,31 @@ export async function extractTextWithInfo(
       pageJoiner: ''
     })
 
-    const pages: PageText[] = textResult.pages.map((page) => ({
+    let pages: PageText[] = textResult.pages.map((page) => ({
       pageNumber: page.num,
       text: page.text.trim()
     }))
 
     const hasText = pages.some(page => page.text.length > 0)
+
+    // If no text found, try OCR
     if (!hasText) {
-      throw new PDFExtractionError(
-        'PDF does not contain extractable text. The PDF may be scanned images or have protected content.'
-      )
+      console.log('No text found in PDF, attempting OCR...')
+      await parser.destroy()
+
+      pages = await extractTextWithOCR(buffer, pagesToParse)
+
+      const hasOcrText = pages.some(page => page.text.length > 0)
+      if (!hasOcrText) {
+        throw new PDFExtractionError(
+          'Impossibile estrarre testo dal PDF. Il documento potrebbe essere protetto o contenere solo immagini non riconoscibili.'
+        )
+      }
+
+      return {
+        pages,
+        totalPages
+      }
     }
 
     return {

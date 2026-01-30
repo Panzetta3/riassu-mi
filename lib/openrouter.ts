@@ -18,9 +18,18 @@ export interface QuizQuestion {
   correctAnswer: string
   explanation: string
 }
-const MODEL = 'meta-llama/llama-3.2-3b-instruct:free'
-const MAX_RETRIES = 3
-const DEFAULT_MAX_TOKENS = 3000 // Safe limit for free models
+
+const MODEL = 'google/gemma-3-4b-it:free'
+const RETRIES_PER_KEY = 3      // Tentativi per ogni chiave API
+const MAX_KEYS_TO_TRY = 5      // Numero massimo di chiavi da provare
+const RETRY_DELAY_MS = 3000    // 3 secondi tra un tentativo e l'altro
+
+/**
+ * Helper to delay execution
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 /**
  * Error thrown when all API keys have been exhausted or other OpenRouter errors occur
@@ -50,31 +59,58 @@ Usa il formato Markdown per la formattazione (titoli, liste, grassetto, ecc.).`
       return `${basePrompt}
 
 LIVELLO DI DETTAGLIO: BREVE
-- Crea bullet points dei concetti chiave
-- Mantieni il riassunto conciso e diretto
-- Evidenzia solo le informazioni essenziali
-- Usa liste puntate per organizzare i concetti
-- Non aggiungere spiegazioni dettagliate`
+
+Requisiti:
+- Crea bullet points (elenchi puntati) dei concetti chiave
+- Ogni punto deve essere una frase completa e comprensibile
+- Includi almeno 8-12 punti principali
+- Raggruppa i punti per argomento con sottotitoli (##)
+- Mantieni il riassunto conciso ma completo nei concetti essenziali
+- Evidenzia i termini chiave in grassetto`
 
     case 'medium':
       return `${basePrompt}
 
 LIVELLO DI DETTAGLIO: MEDIO
-- Crea 1-2 paragrafi per ogni sezione principale
-- Bilancia sintesi e completezza
-- Includi i concetti principali con brevi spiegazioni
-- Usa sottotitoli per organizzare il contenuto
-- Mantieni un buon equilibrio tra brevità e chiarezza`
+
+Requisiti:
+- Crea 2-3 paragrafi per ogni sezione principale
+- Ogni paragrafo deve avere 3-4 frasi
+- Includi i concetti principali con spiegazioni chiare
+- Bilancia sintesi e completezza - non essere troppo breve
+- Usa sottotitoli (##, ###) per organizzare il contenuto
+- Evidenzia i termini chiave in grassetto
+- Il riassunto deve coprire tutti gli argomenti importanti del testo`
 
     case 'detailed':
       return `${basePrompt}
 
-LIVELLO DI DETTAGLIO: DETTAGLIATO
-- Fornisci spiegazioni complete con esempi
-- Approfondisci ogni concetto importante
-- Includi definizioni e contestualizzazioni
-- Usa esempi pratici quando possibile
-- Crea un riassunto esaustivo che copra tutti gli aspetti del materiale`
+LIVELLO DI DETTAGLIO: DETTAGLIATO (MASSIMA LUNGHEZZA)
+
+IMPORTANTE: Il riassunto deve essere LUNGO e COMPLETO. Non abbreviare!
+
+Requisiti di lunghezza:
+- Il riassunto deve essere lungo almeno il 40-50% del testo originale
+- Ogni sezione principale deve avere 4-6 paragrafi
+- Ogni paragrafo deve avere 4-6 frasi complete
+- Non saltare nessun concetto importante
+
+Contenuto richiesto:
+- Fornisci spiegazioni COMPLETE e APPROFONDITE per ogni concetto
+- Includi definizioni dettagliate di tutti i termini importanti
+- Aggiungi esempi pratici e casi d'uso quando possibile
+- Spiega le relazioni tra i diversi concetti
+- Includi contesto storico o teorico se rilevante
+- Approfondisci le implicazioni e le conseguenze dei concetti
+
+Struttura:
+- Usa titoli (##) e sottotitoli (###) per organizzare il contenuto
+- Crea sezioni ben definite per ogni argomento principale
+- Usa liste puntate per elencare dettagli specifici
+- Usa grassetto per evidenziare termini chiave
+- Includi una breve introduzione e conclusione
+
+NON ABBREVIARE. Scrivi tutto il contenuto necessario per una comprensione completa.`  
 
     default:
       return basePrompt
@@ -82,182 +118,24 @@ LIVELLO DI DETTAGLIO: DETTAGLIATO
 }
 
 /**
- * Get the user prompt for summarization
+ * Get the user prompt for summarization (includes system instructions for compatibility)
  */
-function getUserPrompt(text: string): string {
-  return `Riassumi il seguente testo di studio:
+function getUserPrompt(text: string, detailLevel: DetailLevel): string {
+  const systemInstructions = getSystemPrompt(detailLevel)
+
+  return `${systemInstructions}
 
 ---
+
+TESTO DA RIASSUMERE:
+
 ${text}
+
 ---
 
-Crea un riassunto ben strutturato in formato Markdown.`
+Crea il riassunto in formato Markdown seguendo le istruzioni sopra.`
 }
 
-/**
- * Get the user prompt for combining partial summaries
- */
-function getCombinePrompt(summaries: string[]): string {
-  const combinedSummaries = summaries
-    .map((s, i) => `--- PARTE ${i + 1} ---\n${s}`)
-    .join('\n\n')
-
-  return `Combina i seguenti riassunti parziali in un unico riassunto coerente e ben strutturato.
-Elimina ripetizioni, unifica le sezioni simili e crea un documento fluido.
-Mantieni il formato Markdown.
-
-${combinedSummaries}
-
-Crea un riassunto unificato e ben strutturato.`
-}
-
-/**
- * Estimate the number of tokens in a text.
- * Uses a simple heuristic: ~4 characters per token for most languages.
- * This is a rough estimate but works well for practical purposes.
- */
-export function estimateTokens(text: string): number {
-  // Average ~4 characters per token for mixed content
-  // This is conservative and works for most Latin-based languages
-  return Math.ceil(text.length / 4)
-}
-
-/**
- * Splits text into chunks of approximately maxTokens each.
- * Tries to split at paragraph boundaries for better coherence.
- *
- * @param text - The text to split into chunks
- * @param maxTokens - Maximum tokens per chunk (default: 3000)
- * @returns Array of text chunks
- */
-export function chunkText(text: string, maxTokens: number = DEFAULT_MAX_TOKENS): string[] {
-  const totalTokens = estimateTokens(text)
-
-  // If text fits in a single chunk, return as-is
-  if (totalTokens <= maxTokens) {
-    return [text]
-  }
-
-  const chunks: string[] = []
-  const maxCharsPerChunk = maxTokens * 4 // Convert tokens back to approximate chars
-
-  // Split by paragraphs first (double newline)
-  const paragraphs = text.split(/\n\s*\n/)
-
-  let currentChunk = ''
-
-  for (const paragraph of paragraphs) {
-    const paragraphWithSpacing = paragraph.trim()
-
-    if (!paragraphWithSpacing) {
-      continue
-    }
-
-    // If adding this paragraph would exceed the limit
-    if (currentChunk.length + paragraphWithSpacing.length + 2 > maxCharsPerChunk) {
-      // If current chunk has content, save it
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim())
-        currentChunk = ''
-      }
-
-      // If the paragraph itself is too long, split it by sentences
-      if (paragraphWithSpacing.length > maxCharsPerChunk) {
-        const sentenceChunks = splitLongParagraph(paragraphWithSpacing, maxCharsPerChunk)
-        chunks.push(...sentenceChunks.slice(0, -1))
-        currentChunk = sentenceChunks[sentenceChunks.length - 1] || ''
-      } else {
-        currentChunk = paragraphWithSpacing
-      }
-    } else {
-      // Add paragraph to current chunk
-      if (currentChunk) {
-        currentChunk += '\n\n' + paragraphWithSpacing
-      } else {
-        currentChunk = paragraphWithSpacing
-      }
-    }
-  }
-
-  // Don't forget the last chunk
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim())
-  }
-
-  return chunks.length > 0 ? chunks : [text]
-}
-
-/**
- * Splits a long paragraph into smaller pieces at sentence boundaries
- */
-function splitLongParagraph(paragraph: string, maxChars: number): string[] {
-  const chunks: string[] = []
-  // Split by sentence endings (. ! ? followed by space or end)
-  const sentences = paragraph.split(/(?<=[.!?])\s+/)
-
-  let currentChunk = ''
-
-  for (const sentence of sentences) {
-    if (currentChunk.length + sentence.length + 1 > maxChars) {
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim())
-        currentChunk = ''
-      }
-
-      // If a single sentence is too long, split by words
-      if (sentence.length > maxChars) {
-        const wordChunks = splitByWords(sentence, maxChars)
-        chunks.push(...wordChunks.slice(0, -1))
-        currentChunk = wordChunks[wordChunks.length - 1] || ''
-      } else {
-        currentChunk = sentence
-      }
-    } else {
-      if (currentChunk) {
-        currentChunk += ' ' + sentence
-      } else {
-        currentChunk = sentence
-      }
-    }
-  }
-
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim())
-  }
-
-  return chunks
-}
-
-/**
- * Last resort: split by words when even sentences are too long
- */
-function splitByWords(text: string, maxChars: number): string[] {
-  const chunks: string[] = []
-  const words = text.split(/\s+/)
-
-  let currentChunk = ''
-
-  for (const word of words) {
-    if (currentChunk.length + word.length + 1 > maxChars) {
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim())
-      }
-      currentChunk = word
-    } else {
-      if (currentChunk) {
-        currentChunk += ' ' + word
-      } else {
-        currentChunk = word
-      }
-    }
-  }
-
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim())
-  }
-
-  return chunks
-}
 
 interface OpenRouterResponse {
   id: string
@@ -300,17 +178,22 @@ async function callOpenRouter(
   if (!response.ok) {
     const errorText = await response.text()
     let errorMessage = `OpenRouter API error: ${response.status}`
+    let errorCode: string | undefined
 
     try {
       const errorJson = JSON.parse(errorText)
       if (errorJson.error?.message) {
         errorMessage = errorJson.error.message
       }
+      if (errorJson.error?.code) {
+        errorCode = errorJson.error.code
+      }
     } catch {
       // Use default error message
     }
 
-    throw new OpenRouterError(errorMessage, undefined, response.status)
+    console.error(`OpenRouter error ${response.status}: ${errorMessage}`)
+    throw new OpenRouterError(errorMessage, errorCode, response.status)
   }
 
   const data: OpenRouterResponse = await response.json()
@@ -328,7 +211,10 @@ async function callOpenRouter(
 
 /**
  * Generates a summary of the given text using OpenRouter AI.
- * Implements automatic failover between API keys.
+ * Implements automatic failover between API keys with retry logic:
+ * - Try each key up to RETRIES_PER_KEY times (3)
+ * - Wait RETRY_DELAY_MS (3 seconds) between attempts
+ * - If all attempts fail for a key, move to the next key
  *
  * @param text - The text to summarize
  * @param detailLevel - The level of detail for the summary (brief, medium, detailed)
@@ -340,13 +226,14 @@ export async function generateSummary(
   detailLevel: DetailLevel
 ): Promise<string> {
   const messages = [
-    { role: 'system', content: getSystemPrompt(detailLevel) },
-    { role: 'user', content: getUserPrompt(text) }
+    { role: 'user', content: getUserPrompt(text, detailLevel) }
   ]
 
   let lastError: Error | null = null
+  const triedKeyIds = new Set<string>()
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  // Try up to MAX_KEYS_TO_TRY different API keys
+  for (let keyAttempt = 0; keyAttempt < MAX_KEYS_TO_TRY; keyAttempt++) {
     const keyData = await getActiveKeyWithId()
 
     if (!keyData) {
@@ -356,32 +243,43 @@ export async function generateSummary(
       )
     }
 
-    try {
-      const summary = await callOpenRouter(keyData.key, messages)
+    // Skip if we already tried this key
+    if (triedKeyIds.has(keyData.id)) {
+      console.log(`Key ${keyData.id} already tried, skipping...`)
+      continue
+    }
 
-      // Mark the key as successful
-      await markKeySuccess(keyData.id)
+    triedKeyIds.add(keyData.id)
+    console.log(`Trying API key ${keyAttempt + 1}/${MAX_KEYS_TO_TRY} (ID: ${keyData.id.slice(-6)})`)
 
-      return summary
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
+    // Try this key up to RETRIES_PER_KEY times
+    for (let retry = 0; retry < RETRIES_PER_KEY; retry++) {
+      try {
+        console.log(`  Attempt ${retry + 1}/${RETRIES_PER_KEY}...`)
+        const summary = await callOpenRouter(keyData.key, messages)
 
-      // Mark the key as failed
-      await markKeyFailed(keyData.id)
+        // Success! Mark the key as successful
+        await markKeySuccess(keyData.id)
+        console.log(`  Success!`)
+        return summary
 
-      // If it's a rate limit or authentication error, try another key
-      if (error instanceof OpenRouterError) {
-        const status = error.status
-        // 401 = auth error, 429 = rate limit, 402 = payment required
-        if (status === 401 || status === 429 || status === 402) {
-          continue // Try next key
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        const status = error instanceof OpenRouterError ? error.status : undefined
+
+        console.log(`  Failed (${status || 'network error'}): ${lastError.message.slice(0, 100)}`)
+
+        // If not the last retry for this key, wait and try again
+        if (retry < RETRIES_PER_KEY - 1) {
+          console.log(`  Waiting ${RETRY_DELAY_MS / 1000}s before retry...`)
+          await delay(RETRY_DELAY_MS)
+          continue
         }
-      }
 
-      // For other errors (like network errors), we might still want to retry
-      // but after the last attempt, throw the error
-      if (attempt === MAX_RETRIES - 1) {
-        break
+        // All retries for this key failed, mark it as failed and move to next key
+        console.log(`  All ${RETRIES_PER_KEY} attempts failed for this key, trying next...`)
+        await markKeyFailed(keyData.id, true)
+        break // Exit retry loop, move to next key
       }
     }
   }
@@ -395,105 +293,105 @@ export async function generateSummary(
 export type ChunkProgressCallback = (current: number, total: number) => void
 
 /**
- * Generates a summary with automatic chunking for long texts.
- * If the text exceeds the token limit, it will be split into chunks,
- * each chunk will be summarized separately, and then combined into a final summary.
+ * Page text interface for page-based summarization
+ */
+export interface PageText {
+  pageNumber: number
+  text: string
+}
+
+/**
+ * Groups pages into chunks of specified size.
+ * Example: 6 pages with groupSize=4 => [[1,2,3,4], [5,6]]
  *
- * @param text - The text to summarize
+ * @param pages - Array of pages with text
+ * @param groupSize - Number of pages per group (default: 4)
+ * @returns Array of page groups, each group is an array of pages
+ */
+function groupPagesBySize(pages: PageText[], groupSize: number = 4): PageText[][] {
+  const groups: PageText[][] = []
+
+  for (let i = 0; i < pages.length; i += groupSize) {
+    groups.push(pages.slice(i, i + groupSize))
+  }
+
+  return groups
+}
+
+/**
+ * Combines pages in a group into a single text string
+ */
+function combinePageGroupText(pages: PageText[]): string {
+  return pages
+    .map(p => p.text)
+    .filter(t => t.length > 0)
+    .join('\n\n')
+}
+
+/**
+ * Generates a summary with page-based chunking.
+ * Splits the PDF into groups of 4 pages and summarizes each group separately.
+ * Returns all summaries concatenated with page range headers (NO combining/unifying).
+ *
+ * @param pages - Array of pages with their text content
  * @param detailLevel - The level of detail for the summary (brief, medium, detailed)
- * @param maxTokens - Maximum tokens per chunk (default: 3000)
+ * @param pagesPerGroup - Number of pages per group (default: 4)
  * @param onProgress - Optional callback for progress updates
- * @returns The generated summary in Markdown format
+ * @returns The generated summaries in Markdown format, separated by page headers
  * @throws OpenRouterError if API calls fail
  */
-export async function generateSummaryWithChunking(
-  text: string,
+export async function generateSummaryByPageGroups(
+  pages: PageText[],
   detailLevel: DetailLevel,
-  maxTokens: number = DEFAULT_MAX_TOKENS,
+  pagesPerGroup: number = 4,
   onProgress?: ChunkProgressCallback
 ): Promise<string> {
-  const chunks = chunkText(text, maxTokens)
+  // Filter out empty pages
+  const nonEmptyPages = pages.filter(p => p.text.trim().length > 0)
 
-  // If only one chunk, use regular summary
-  if (chunks.length === 1) {
+  if (nonEmptyPages.length === 0) {
+    throw new OpenRouterError('Nessun testo da riassumere', 'EMPTY_TEXT')
+  }
+
+  // Group pages
+  const pageGroups = groupPagesBySize(nonEmptyPages, pagesPerGroup)
+
+  console.log(`Splitting ${nonEmptyPages.length} pages into ${pageGroups.length} groups of up to ${pagesPerGroup} pages each`)
+
+  // If only one group, use regular summary
+  if (pageGroups.length === 1) {
     if (onProgress) {
       onProgress(1, 1)
     }
-    return generateSummary(text, detailLevel)
+    const fullText = combinePageGroupText(pageGroups[0])
+    return generateSummary(fullText, detailLevel)
   }
 
-  // Generate summary for each chunk
-  const partialSummaries: string[] = []
+  // Generate summary for each page group with page range header
+  const summariesWithHeaders: string[] = []
 
-  for (let i = 0; i < chunks.length; i++) {
+  for (let i = 0; i < pageGroups.length; i++) {
+    const group = pageGroups[i]
+    const pageNumbers = group.map(p => p.pageNumber)
+    const firstPage = pageNumbers[0]
+    const lastPage = pageNumbers[pageNumbers.length - 1]
+    const pageRange = firstPage === lastPage ? `Pagina ${firstPage}` : `Pagine ${firstPage}-${lastPage}`
+
+    console.log(`Summarizing group ${i + 1}/${pageGroups.length} (${pageRange})`)
+
     if (onProgress) {
-      onProgress(i + 1, chunks.length)
+      onProgress(i + 1, pageGroups.length)
     }
 
-    const partialSummary = await generateSummary(chunks[i], detailLevel)
-    partialSummaries.push(partialSummary)
+    const groupText = combinePageGroupText(group)
+    const partialSummary = await generateSummary(groupText, detailLevel)
+
+    // Add page range header to the summary
+    summariesWithHeaders.push(`## 📄 ${pageRange}\n\n${partialSummary}`)
   }
 
-  // Combine partial summaries into a final summary
-  const combinedText = partialSummaries.join('\n\n')
-
-  // If combined summaries are small enough, return them directly
-  if (estimateTokens(combinedText) <= maxTokens * 1.5) {
-    return combinedText
-  }
-
-  // Otherwise, use AI to combine and clean up the summaries
-  const combineMessages = [
-    {
-      role: 'system',
-      content: `Sei un assistente specializzato nel combinare riassunti.
-Mantieni il formato Markdown e la lingua originale del contenuto.
-Non aggiungere nuove informazioni, solo unifica e riorganizza il contenuto esistente.`
-    },
-    { role: 'user', content: getCombinePrompt(partialSummaries) }
-  ]
-
-  let lastError: Error | null = null
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const keyData = await getActiveKeyWithId()
-
-    if (!keyData) {
-      throw new OpenRouterError(
-        'Nessuna API key disponibile. Contatta l\'amministratore.',
-        'NO_API_KEY'
-      )
-    }
-
-    try {
-      const finalSummary = await callOpenRouter(keyData.key, combineMessages)
-      await markKeySuccess(keyData.id)
-      return finalSummary
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
-      await markKeyFailed(keyData.id)
-
-      if (error instanceof OpenRouterError) {
-        const status = error.status
-        if (status === 401 || status === 429 || status === 402) {
-          continue
-        }
-      }
-
-      if (attempt === MAX_RETRIES - 1) {
-        break
-      }
-    }
-  }
-
-  // If combining fails, return the concatenated partial summaries
-  // This is a fallback to ensure the user gets something useful
-  if (lastError) {
-    console.error('Failed to combine summaries, returning concatenated version:', lastError)
-    return partialSummaries.join('\n\n---\n\n')
-  }
-
-  throw lastError || new OpenRouterError('Impossibile combinare i riassunti')
+  // Return all summaries concatenated with clear separators (NO combining)
+  return summariesWithHeaders.join('\n\n---\n\n')
 }
 
 /**
@@ -670,21 +568,26 @@ function parseQuizResponse(response: string): QuizQuestion[] {
 /**
  * Generates a quiz based on the summary content.
  * Creates 10 questions: ~7 multiple choice (4 options each) and ~3 true/false.
- * Questions are in the same language as the content.
+ * Uses the same retry logic as generateSummary.
  *
  * @param summaryContent - The summary content to base the quiz on
  * @returns Array of quiz questions
  * @throws OpenRouterError if API calls fail or response parsing fails
  */
 export async function generateQuiz(summaryContent: string): Promise<QuizQuestion[]> {
+  const combinedPrompt = `${getQuizSystemPrompt()}
+
+${getQuizUserPrompt(summaryContent)}`
+
   const messages = [
-    { role: 'system', content: getQuizSystemPrompt() },
-    { role: 'user', content: getQuizUserPrompt(summaryContent) }
+    { role: 'user', content: combinedPrompt }
   ]
 
   let lastError: Error | null = null
+  const triedKeyIds = new Set<string>()
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+  // Try up to MAX_KEYS_TO_TRY different API keys
+  for (let keyAttempt = 0; keyAttempt < MAX_KEYS_TO_TRY; keyAttempt++) {
     const keyData = await getActiveKeyWithId()
 
     if (!keyData) {
@@ -694,39 +597,52 @@ export async function generateQuiz(summaryContent: string): Promise<QuizQuestion
       )
     }
 
-    try {
-      const response = await callOpenRouter(keyData.key, messages)
+    // Skip if we already tried this key
+    if (triedKeyIds.has(keyData.id)) {
+      continue
+    }
 
-      // Mark the key as successful
-      await markKeySuccess(keyData.id)
+    triedKeyIds.add(keyData.id)
+    console.log(`[Quiz] Trying API key ${keyAttempt + 1}/${MAX_KEYS_TO_TRY}`)
 
-      // Parse and validate the quiz response
-      const questions = parseQuizResponse(response)
+    // Try this key up to RETRIES_PER_KEY times
+    for (let retry = 0; retry < RETRIES_PER_KEY; retry++) {
+      try {
+        console.log(`  Attempt ${retry + 1}/${RETRIES_PER_KEY}...`)
+        const response = await callOpenRouter(keyData.key, messages)
 
-      return questions
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
-
-      // Mark the key as failed only for API errors, not parsing errors
-      if (error instanceof OpenRouterError && error.status) {
-        await markKeyFailed(keyData.id)
-
-        const status = error.status
-        // 401 = auth error, 429 = rate limit, 402 = payment required
-        if (status === 401 || status === 429 || status === 402) {
-          continue // Try next key
-        }
-      }
-
-      // For parsing errors or other errors, break after last attempt
-      if (attempt === MAX_RETRIES - 1) {
-        break
-      }
-
-      // For parsing errors, mark key success (API worked) but still retry
-      if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR') {
+        // Mark the key as successful
         await markKeySuccess(keyData.id)
-        continue // Retry, maybe next attempt will get valid JSON
+
+        // Parse and validate the quiz response
+        const questions = parseQuizResponse(response)
+        return questions
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        // For parsing errors (API worked but returned invalid JSON), retry without changing key
+        if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR') {
+          console.log(`  JSON parse error, retrying...`)
+          if (retry < RETRIES_PER_KEY - 1) {
+            await delay(RETRY_DELAY_MS)
+            continue
+          }
+          break // Move to next key
+        }
+
+        // For API errors
+        console.log(`  Failed: ${lastError.message.slice(0, 100)}`)
+
+        if (retry < RETRIES_PER_KEY - 1) {
+          console.log(`  Waiting ${RETRY_DELAY_MS / 1000}s before retry...`)
+          await delay(RETRY_DELAY_MS)
+          continue
+        }
+
+        // All retries failed, mark key as failed and move to next
+        await markKeyFailed(keyData.id, true)
+        break
       }
     }
   }
