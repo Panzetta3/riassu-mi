@@ -122,6 +122,7 @@ function LoginForm() {
       // Redirect to dashboard on success
       toast.success("Login effettuato con successo!");
       router.push("/dashboard");
+      router.refresh();
     } catch {
       const errorMsg = "Errore di connessione. Riprova più tardi.";
       setApiError(errorMsg);
