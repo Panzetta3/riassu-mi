@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, DragEvent, ChangeEvent } from "react";
 import { Button } from "@/components/ui";
 
-export type FileType = "pdf" | "image";
+export type FileType = "pdf" | "image" | "word" | "text";
 
 interface FileUploadProps {
   onFileSelect: (file: File, type: FileType) => void;
@@ -31,6 +31,16 @@ function isImageFile(file: File): boolean {
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function isWordFile(file: File): boolean {
+  return file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.type === "application/msword" ||
+    /\.(docx|doc)$/i.test(file.name);
+}
+
+function isTextFile(file: File): boolean {
+  return file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
 }
 
 export function FileUpload({
@@ -68,6 +78,10 @@ export function FileUpload({
       onFileSelect(file, "pdf");
     } else if (isImageFile(file)) {
       onFileSelect(file, "image");
+    } else if (isWordFile(file)) {
+      onFileSelect(file, "word");
+    } else if (isTextFile(file)) {
+      onFileSelect(file, "text");
     }
   }, [onFileSelect]);
 
@@ -120,11 +134,11 @@ export function FileUpload({
 
   return (
     <div className="w-full">
-      {/* Hidden file input for PDF/images */}
+      {/* Hidden file input for PDF/images/Word/TXT */}
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,image/*"
+        accept=".pdf,.docx,.doc,.txt,image/*"
         onChange={handleFileInputChange}
         className="hidden"
       />
@@ -193,7 +207,7 @@ export function FileUpload({
               oppure clicca per selezionare
             </p>
             <p className="mt-4 text-xs text-gray-400 dark:text-gray-500">
-              PDF o immagini (JPG, PNG)
+              PDF, Word (.docx), TXT o immagini (JPG, PNG)
             </p>
 
             {/* Camera button - visible on mobile */}
@@ -214,8 +228,8 @@ export function FileUpload({
         ) : (
           <div className="flex flex-col items-center">
             <div className="mb-4 text-5xl">
-              <span role="img" aria-label={fileType === "pdf" ? "PDF" : "Image"}>
-                {fileType === "pdf" ? "📄" : "🖼️"}
+              <span role="img" aria-label={fileType || "File"}>
+                {fileType === "pdf" ? "📄" : fileType === "word" ? "📝" : fileType === "text" ? "📃" : "🖼️"}
               </span>
             </div>
             <p className="mb-1 text-lg font-medium text-gray-700 dark:text-gray-200">
@@ -227,6 +241,11 @@ export function FileUpload({
             {fileType === "image" && (
               <p className="mt-2 text-xs text-green-600 dark:text-green-400">
                 ✓ Testo estratto dall&apos;immagine
+              </p>
+            )}
+            {(fileType === "word" || fileType === "text") && (
+              <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                ✓ File pronto per il riassunto
               </p>
             )}
           </div>
@@ -250,4 +269,4 @@ export function FileUpload({
   );
 }
 
-export { MAX_FILE_SIZE, MAX_IMAGE_SIZE, formatFileSize, isImageFile, isPdfFile };
+export { MAX_FILE_SIZE, MAX_IMAGE_SIZE, formatFileSize, isImageFile, isPdfFile, isWordFile, isTextFile };

@@ -3,12 +3,14 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileUpload, MAX_FILE_SIZE, MAX_IMAGE_SIZE, isImageFile, isPdfFile, FileType } from "@/components/file-upload";
+import { FileUpload, MAX_FILE_SIZE, MAX_IMAGE_SIZE, isImageFile, isPdfFile, isWordFile, isTextFile, FileType } from "@/components/file-upload";
 import { Button, Card, CardContent, CardHeader, Input } from "@/components/ui";
 import { DetailLevelSelector, DetailLevel } from "@/components/detail-level-selector";
 import { ProgressIndicator, ProgressStage } from "@/components/progress-indicator";
 import { parsePageRanges } from "@/lib/utils";
 import { useToast } from "@/components/toast";
+
+const MAX_TEXT_FILE_SIZE = 10 * 1024 * 1024; // 10MB for text/word files
 
 function validateFile(file: File, type: FileType): string | null {
   if (type === "pdf") {
@@ -27,6 +29,20 @@ function validateFile(file: File, type: FileType): string | null {
     }
     if (file.size > MAX_IMAGE_SIZE) {
       return "L'immagine supera il limite di 20MB";
+    }
+  } else if (type === "word") {
+    if (!isWordFile(file)) {
+      return "Il file deve essere un documento Word valido (.docx)";
+    }
+    if (file.size > MAX_TEXT_FILE_SIZE) {
+      return "Il file Word supera il limite di 10MB";
+    }
+  } else if (type === "text") {
+    if (!isTextFile(file)) {
+      return "Il file deve essere un file di testo valido (.txt)";
+    }
+    if (file.size > MAX_TEXT_FILE_SIZE) {
+      return "Il file di testo supera il limite di 10MB";
     }
   }
   return null;
@@ -56,6 +72,19 @@ async function extractTextFromImage(
   });
 
   return result.data.text;
+}
+
+// Extract text from Word file using mammoth
+async function extractTextFromWord(file: File): Promise<string> {
+  const mammoth = await import("mammoth");
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer });
+  return result.value;
+}
+
+// Extract text from TXT file
+async function extractTextFromTxt(file: File): Promise<string> {
+  return await file.text();
 }
 
 export default function UploadPage() {
@@ -160,6 +189,56 @@ export default function UploadPage() {
       } finally {
         setIsProcessingImage(false);
       }
+    } else if (type === "word") {
+      // Process Word file
+      setIsProcessingImage(true);
+      setOcrProgress(50);
+      setSelectedFile(file);
+      setFileType(type);
+
+      try {
+        const text = await extractTextFromWord(file);
+
+        if (!text.trim()) {
+          setError("Nessun testo trovato nel documento Word.");
+          setSelectedFile(null);
+          setFileType(null);
+          setExtractedText(null);
+        } else {
+          setExtractedText(text);
+        }
+      } catch (err) {
+        console.error("Word extraction error:", err);
+        setError("Errore durante l'estrazione del testo dal documento Word");
+        setSelectedFile(null);
+        setFileType(null);
+        setExtractedText(null);
+      } finally {
+        setIsProcessingImage(false);
+      }
+    } else if (type === "text") {
+      // Process TXT file
+      setSelectedFile(file);
+      setFileType(type);
+
+      try {
+        const text = await extractTextFromTxt(file);
+
+        if (!text.trim()) {
+          setError("Il file di testo è vuoto.");
+          setSelectedFile(null);
+          setFileType(null);
+          setExtractedText(null);
+        } else {
+          setExtractedText(text);
+        }
+      } catch (err) {
+        console.error("TXT extraction error:", err);
+        setError("Errore durante la lettura del file di testo");
+        setSelectedFile(null);
+        setFileType(null);
+        setExtractedText(null);
+      }
     } else {
       // PDF file
       setSelectedFile(file);
@@ -190,8 +269,8 @@ export default function UploadPage() {
     try {
       let response: Response;
 
-      if (fileType === "image" && extractedText) {
-        // For images, send the extracted text
+      if ((fileType === "image" || fileType === "word" || fileType === "text") && extractedText) {
+        // For images, Word, and TXT files, send the extracted text
         const stageTimer = setTimeout(() => {
           setProgressStage("generating");
         }, 500);
@@ -230,10 +309,27 @@ export default function UploadPage() {
         clearTimeout(stageTimer);
       }
 
-      const data = await response.json();
+      // Check if response has content before parsing JSON
+      const contentType = response.headers.get("content-type");
+      let data;
+
+      if (contentType && contentType.includes("application/json")) {
+        const text = await response.text();
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            throw new Error("Risposta del server non valida");
+          }
+        } else {
+          throw new Error("Risposta vuota dal server");
+        }
+      } else {
+        throw new Error("Risposta del server non valida");
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Errore durante la generazione del riassunto");
+        throw new Error(data?.error || "Errore durante la generazione del riassunto");
       }
 
       // Show saving stage briefly before redirect
@@ -254,7 +350,7 @@ export default function UploadPage() {
   }, [selectedFile, fileType, extractedText, detailLevel, excludePagesInput, router, toast]);
 
   const canSubmit = selectedFile && !error && !excludePagesError &&
-    (fileType === "pdf" || (fileType === "image" && extractedText));
+    (fileType === "pdf" || ((fileType === "image" || fileType === "word" || fileType === "text") && extractedText));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
@@ -286,7 +382,7 @@ export default function UploadPage() {
               Carica il tuo documento
             </h1>
             <p className="mt-1 text-gray-600 dark:text-gray-400">
-              Seleziona un PDF o scatta una foto per generare un riassunto
+              Seleziona un PDF, Word, TXT o scatta una foto per generare un riassunto
             </p>
           </CardHeader>
 
@@ -307,18 +403,18 @@ export default function UploadPage() {
                   ocrProgress={ocrProgress}
                 />
 
-                {/* Extracted text preview for images */}
-                {fileType === "image" && extractedText && (
+                {/* Extracted text preview for images, Word, and TXT files */}
+                {(fileType === "image" || fileType === "word" || fileType === "text") && extractedText && (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
                     <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Testo rilevato:
+                      {fileType === "image" ? "Testo rilevato:" : "Anteprima testo:"}
                     </p>
                     <p className="max-h-32 overflow-y-auto text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                       {extractedText.slice(0, 500)}
                       {extractedText.length > 500 && "..."}
                     </p>
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
-                      {extractedText.length} caratteri estratti
+                      {extractedText.length} caratteri
                     </p>
                   </div>
                 )}
@@ -407,7 +503,7 @@ export default function UploadPage() {
                   </div>
                 )}
 
-                {/* Detail Level Selector - show for both PDF and images */}
+                {/* Detail Level Selector - show for all file types */}
                 {selectedFile && !error && (fileType === "pdf" || extractedText) && (
                   <DetailLevelSelector
                     value={detailLevel}
