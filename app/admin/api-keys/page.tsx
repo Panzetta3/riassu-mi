@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { decryptKey } from "@/lib/api-keys";
 import { ApiKeyList } from "./api-key-list";
 
+export const dynamic = 'force-dynamic';
+
 export interface ApiKeyData {
   id: string;
   lastFourChars: string;

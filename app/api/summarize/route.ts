@@ -6,6 +6,12 @@ import { parsePageRanges } from '@/lib/utils'
 import { getSession } from '@/lib/auth'
 import type { DetailLevel } from '@/components/detail-level-selector'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
+// Extend timeout for Vercel (Pro plan only, ignored on Hobby)
+export const maxDuration = 60
+
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024 // 2GB
 const VALID_DETAIL_LEVELS: DetailLevel[] = ['brief', 'medium', 'detailed']
 
@@ -146,7 +152,12 @@ export async function POST(
     const title = pdfName.replace(/\.pdf$/i, '')
 
     // Get current user session (if logged in)
-    const session = await getSession()
+    let session = null
+    try {
+      session = await getSession()
+    } catch {
+      // Ignore session errors, treat as guest
+    }
 
     // Save summary to database (user_id is set if user is logged in, null for guests)
     const summary = await prisma.summary.create({

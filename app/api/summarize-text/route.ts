@@ -4,6 +4,12 @@ import { generateSummary, OpenRouterError } from '@/lib/openrouter'
 import { getSession } from '@/lib/auth'
 import type { DetailLevel } from '@/components/detail-level-selector'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
+// Extend timeout for Vercel (Pro plan only, ignored on Hobby)
+export const maxDuration = 60
+
 const MAX_TEXT_LENGTH = 100000 // 100KB of text
 const VALID_DETAIL_LEVELS: DetailLevel[] = ['brief', 'medium', 'detailed']
 
@@ -90,7 +96,12 @@ export async function POST(
     }
 
     // Get current user session (if logged in)
-    const session = await getSession()
+    let session = null
+    try {
+      session = await getSession()
+    } catch {
+      // Ignore session errors, treat as guest
+    }
 
     // Save summary to database
     const summary = await prisma.summary.create({

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { UserList } from "./user-list";
 
+export const dynamic = 'force-dynamic';
+
 export interface UserData {
   id: string;
   email: string;
