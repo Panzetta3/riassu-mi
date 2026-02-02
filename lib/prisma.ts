@@ -1,6 +1,11 @@
 import { PrismaClient } from './generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { Pool } from 'pg'
+import { Pool, neonConfig } from '@neondatabase/serverless'
+import ws from 'ws'
+
+// Enable WebSocket for serverless environments (Vercel)
+// Use ws package for Node.js, native WebSocket for edge/browser
+neonConfig.webSocketConstructor = typeof WebSocket !== 'undefined' ? WebSocket : ws
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
