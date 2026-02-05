@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 interface LoginRequest {
   email: string;
   password: string;
@@ -67,8 +69,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Login error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Errore durante il login" },
+      { error: `Errore durante il login: ${errorMessage}` },
       { status: 500 }
     );
   }
