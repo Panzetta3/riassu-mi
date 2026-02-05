@@ -1,6 +1,12 @@
 import { PrismaClient } from './generated/prisma/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
-import { Pool } from '@neondatabase/serverless'
+import { Pool, neonConfig } from '@neondatabase/serverless'
+import ws from 'ws'
+
+// Configure WebSocket for Vercel serverless
+if (typeof WebSocket === 'undefined') {
+  neonConfig.webSocketConstructor = ws
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -22,8 +28,12 @@ function createPrismaClient() {
   console.log('Creating Prisma client with connection string:', connectionString.substring(0, 30) + '...')
 
   const pool = new Pool({ connectionString })
+  console.log('Pool created successfully')
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adapter = new PrismaNeon(pool as any)
+  console.log('Adapter created successfully')
+
   return new PrismaClient({ adapter })
 }
 
