@@ -27,7 +27,20 @@ function createPrismaClient() {
 
   console.log('Creating Prisma client with connection string:', connectionString.substring(0, 30) + '...')
 
-  const pool = new Pool({ connectionString })
+  // Parse connection string into config object for Neon Pool
+  const url = new URL(connectionString)
+  const poolConfig = {
+    host: url.hostname,
+    port: parseInt(url.port) || 5432,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.slice(1), // Remove leading slash
+    ssl: true,
+  }
+
+  console.log('Pool config:', { host: poolConfig.host, database: poolConfig.database })
+
+  const pool = new Pool(poolConfig)
   console.log('Pool created successfully')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
