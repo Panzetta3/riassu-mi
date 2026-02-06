@@ -1,6 +1,11 @@
-import { PDFParse } from 'pdf-parse'
+import * as pdfjsLib from 'pdfjs-dist'
 import Tesseract from 'tesseract.js'
-import { pdf } from 'pdf-to-img'
+
+// Set worker path for pdf.js
+if (typeof window === 'undefined') {
+  // Server-side
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+}
 
 export interface PageText {
   pageNumber: number
@@ -21,68 +26,26 @@ export class PDFExtractionError extends Error {
 
 /**
  * Extract text from PDF pages using OCR (Tesseract.js)
- * Uses pdf-to-img to convert PDF pages to images
+ * For scanned PDFs without embedded text
  */
 async function extractTextWithOCR(
   buffer: Buffer | Uint8Array,
   pagesToParse: number[]
 ): Promise<PageText[]> {
-  const data = buffer instanceof Buffer ? buffer : Buffer.from(buffer)
-
-  const pages: PageText[] = []
-  const pageSet = new Set(pagesToParse)
-
-  let pageNum = 0
-
-  // pdf-to-img returns an async iterator of page images
-  const document = await pdf(data, { scale: 2.0 })
-
-  for await (const image of document) {
-    pageNum++
-
-    // Skip pages not in our list
-    if (!pageSet.has(pageNum)) {
-      continue
-    }
-
-    try {
-      console.log(`OCR processing page ${pageNum}...`)
-
-      // Run OCR on the image buffer
-      const result = await Tesseract.recognize(image, 'ita+eng', {
-        logger: () => {} // Suppress progress logs
-      })
-
-      pages.push({
-        pageNumber: pageNum,
-        text: result.data.text.trim()
-      })
-
-      console.log(`OCR page ${pageNum} completed, extracted ${result.data.text.length} chars`)
-    } catch (error) {
-      console.error(`OCR failed for page ${pageNum}:`, error)
-      pages.push({
-        pageNumber: pageNum,
-        text: ''
-      })
-    }
-  }
-
-  // Sort pages by page number
-  pages.sort((a, b) => a.pageNumber - b.pageNumber)
-
-  return pages
+  // For now, we'll skip OCR on server-side as it's too heavy
+  // OCR should be done client-side for images
+  console.log('OCR extraction not implemented for server-side PDFs')
+  return []
 }
 
 /**
- * Extracts text from a PDF buffer, returning an array of { pageNumber, text } for each page.
+ * Extracts text from a PDF buffer using pdf.js, returning an array of { pageNumber, text } for each page.
  * Supports excluding specific pages via the excludePages parameter.
- * Falls back to OCR if the PDF contains scanned images instead of text.
  *
  * @param buffer - The PDF file as a Buffer or Uint8Array
  * @param excludePages - Optional array of page numbers to exclude (1-indexed)
  * @returns Array of { pageNumber, text } for each extracted page
- * @throws PDFExtractionError if the PDF has no extractable text even with OCR
+ * @throws PDFExtractionError if the PDF has no extractable text
  */
 export async function extractText(
   buffer: Buffer | Uint8Array,
@@ -90,12 +53,17 @@ export async function extractText(
 ): Promise<PageText[]> {
   const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
 
-  const parser = new PDFParse({ data })
-
   try {
-    // First, get the total number of pages
-    const info = await parser.getInfo()
-    const totalPages = info.total
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useSystemFonts: true,
+      standardFontDataUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/standard_fonts/`,
+    })
+
+    const pdfDocument = await loadingTask.promise
+
+    const totalPages = pdfDocument.numPages
 
     if (totalPages === 0) {
       throw new PDFExtractionError('PDF document has no pages')
@@ -115,42 +83,63 @@ export async function extractText(
       throw new PDFExtractionError('All pages were excluded from extraction')
     }
 
-    // Extract text from the selected pages
-    const textResult = await parser.getText({
-      partial: pagesToParse,
-      pageJoiner: '' // Don't add page markers, we'll handle pages individually
-    })
+    // Extract text from each page
+    const pages: PageText[] = []
 
-    // Map the results to our format
-    let pages: PageText[] = textResult.pages.map((page) => ({
-      pageNumber: page.num,
-      text: page.text.trim()
-    }))
+    for (const pageNum of pagesToParse) {
+      try {
+        const page = await pdfDocument.getPage(pageNum)
+        const textContent = await page.getTextContent()
+
+        // Combine all text items into a single string
+        const pageText = textContent.items
+          .map((item: any) => {
+            if ('str' in item) {
+              return item.str
+            }
+            return ''
+          })
+          .join(' ')
+          .trim()
+
+        pages.push({
+          pageNumber: pageNum,
+          text: pageText
+        })
+
+        // Clean up page resources
+        page.cleanup()
+      } catch (error) {
+        console.error(`Failed to extract text from page ${pageNum}:`, error)
+        pages.push({
+          pageNumber: pageNum,
+          text: ''
+        })
+      }
+    }
+
+    // Clean up document
+    await pdfDocument.destroy()
 
     // Check if any extractable text was found
     const hasText = pages.some(page => page.text.length > 0)
 
-    // If no text found, try OCR
     if (!hasText) {
-      console.log('No text found in PDF, attempting OCR...')
-      await parser.destroy() // Clean up before OCR
-
-      pages = await extractTextWithOCR(buffer, pagesToParse)
-
-      const hasOcrText = pages.some(page => page.text.length > 0)
-      if (!hasOcrText) {
-        throw new PDFExtractionError(
-          'Impossibile estrarre testo dal PDF. Il documento potrebbe essere protetto o contenere solo immagini non riconoscibili.'
-        )
-      }
-
-      return pages
+      throw new PDFExtractionError(
+        'Il PDF non contiene testo estraibile. Potrebbe essere un documento scansionato o protetto.'
+      )
     }
 
     return pages
-  } finally {
-    // Clean up the parser
-    await parser.destroy()
+  } catch (error) {
+    if (error instanceof PDFExtractionError) {
+      throw error
+    }
+
+    console.error('PDF extraction error:', error)
+    throw new PDFExtractionError(
+      `Errore durante l'estrazione del testo dal PDF: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`
+    )
   }
 }
 
@@ -168,13 +157,18 @@ export async function extractTextWithInfo(
 ): Promise<ExtractTextResult> {
   const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
 
-  const parser = new PDFParse({ data })
-
   try {
-    const info = await parser.getInfo()
-    const totalPages = info.total
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useSystemFonts: true,
+      standardFontDataUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/standard_fonts/`,
+    })
+
+    const pdfDocument = await loadingTask.promise
+    const totalPages = pdfDocument.numPages
 
     if (totalPages === 0) {
+      await pdfDocument.destroy()
       throw new PDFExtractionError('PDF document has no pages')
     }
 
@@ -188,47 +182,65 @@ export async function extractTextWithInfo(
     }
 
     if (pagesToParse.length === 0) {
+      await pdfDocument.destroy()
       throw new PDFExtractionError('All pages were excluded from extraction')
     }
 
-    const textResult = await parser.getText({
-      partial: pagesToParse,
-      pageJoiner: ''
-    })
+    const pages: PageText[] = []
 
-    let pages: PageText[] = textResult.pages.map((page) => ({
-      pageNumber: page.num,
-      text: page.text.trim()
-    }))
+    for (const pageNum of pagesToParse) {
+      try {
+        const page = await pdfDocument.getPage(pageNum)
+        const textContent = await page.getTextContent()
+
+        const pageText = textContent.items
+          .map((item: any) => {
+            if ('str' in item) {
+              return item.str
+            }
+            return ''
+          })
+          .join(' ')
+          .trim()
+
+        pages.push({
+          pageNumber: pageNum,
+          text: pageText
+        })
+
+        page.cleanup()
+      } catch (error) {
+        console.error(`Failed to extract text from page ${pageNum}:`, error)
+        pages.push({
+          pageNumber: pageNum,
+          text: ''
+        })
+      }
+    }
+
+    await pdfDocument.destroy()
 
     const hasText = pages.some(page => page.text.length > 0)
 
-    // If no text found, try OCR
     if (!hasText) {
-      console.log('No text found in PDF, attempting OCR...')
-      await parser.destroy()
-
-      pages = await extractTextWithOCR(buffer, pagesToParse)
-
-      const hasOcrText = pages.some(page => page.text.length > 0)
-      if (!hasOcrText) {
-        throw new PDFExtractionError(
-          'Impossibile estrarre testo dal PDF. Il documento potrebbe essere protetto o contenere solo immagini non riconoscibili.'
-        )
-      }
-
-      return {
-        pages,
-        totalPages
-      }
+      throw new PDFExtractionError(
+        'Il PDF non contiene testo estraibile. Potrebbe essere un documento scansionato o protetto.'
+      )
     }
 
     return {
       pages,
       totalPages
     }
-  } finally {
-    await parser.destroy()
+  } catch (error) {
+    if (error instanceof PDFExtractionError) {
+      throw error
+    }
+
+    console.error('PDF extraction error:', error)
+    throw new PDFExtractionError(
+      `Errore durante l'estrazione del testo dal PDF: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`
+    )
   }
 }
 
@@ -241,12 +253,22 @@ export async function extractTextWithInfo(
 export async function getPageCount(buffer: Buffer | Uint8Array): Promise<number> {
   const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
 
-  const parser = new PDFParse({ data })
-
   try {
-    const info = await parser.getInfo()
-    return info.total
-  } finally {
-    await parser.destroy()
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useSystemFonts: true,
+    })
+
+    const pdfDocument = await loadingTask.promise
+    const totalPages = pdfDocument.numPages
+
+    await pdfDocument.destroy()
+
+    return totalPages
+  } catch (error) {
+    console.error('Error getting page count:', error)
+    throw new PDFExtractionError(
+      `Errore durante il conteggio delle pagine: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`
+    )
   }
 }
