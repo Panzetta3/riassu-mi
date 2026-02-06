@@ -289,9 +289,36 @@ export default function UploadPage() {
 
         clearTimeout(stageTimer);
       } else {
-        // For PDFs, send the file
+        // For PDFs, check size and upload accordingly
+        const FILE_SIZE_LIMIT = 4.5 * 1024 * 1024; // 4.5MB (Vercel limit)
         const formData = new FormData();
-        formData.append("file", selectedFile);
+
+        if (selectedFile.size > FILE_SIZE_LIMIT) {
+          // Large file: upload to Blob storage first
+          setProgressStage("uploading");
+
+          const blobFormData = new FormData();
+          blobFormData.append("file", selectedFile);
+
+          const blobResponse = await fetch("/api/upload-blob", {
+            method: "POST",
+            body: blobFormData,
+          });
+
+          if (!blobResponse.ok) {
+            throw new Error("Errore durante l'upload del file");
+          }
+
+          const blobData = await blobResponse.json();
+
+          // Now send the blob URL to summarize API
+          formData.append("blobUrl", blobData.url);
+          formData.append("fileName", selectedFile.name);
+        } else {
+          // Small file: direct upload
+          formData.append("file", selectedFile);
+        }
+
         formData.append("detailLevel", detailLevel);
         if (excludePagesInput.trim()) {
           formData.append("excludePages", excludePagesInput);

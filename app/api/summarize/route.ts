@@ -5,6 +5,7 @@ import { generateSummaryByPageGroups, OpenRouterError } from '@/lib/openrouter'
 import { parsePageRanges } from '@/lib/utils'
 import { getSession } from '@/lib/auth'
 import type { DetailLevel } from '@/components/detail-level-selector'
+import { del } from '@vercel/blob'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,9 @@ interface ErrorResponse {
  * Accepts a PDF file and generates a summary using AI.
  *
  * Request body (FormData):
- * - file: PDF file (required)
+ * - file: PDF file (required if blobUrl not provided)
+ * - blobUrl: URL to blob storage (required if file not provided)
+ * - fileName: Original file name (required if blobUrl is provided)
  * - excludePages: string with page ranges to exclude (optional, e.g., "1-3, 5")
  * - detailLevel: "brief" | "medium" | "detailed" (required)
  *
@@ -45,27 +48,66 @@ export async function POST(
     // Parse the multipart form data
     const formData = await request.formData()
 
-    // Get the PDF file
+    // Check if we're using blob storage or direct upload
+    const blobUrl = formData.get('blobUrl')
     const file = formData.get('file')
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json(
-        { error: 'File PDF richiesto' },
-        { status: 400 }
-      )
-    }
 
-    // Validate file type
-    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      return NextResponse.json(
-        { error: 'Il file deve essere un PDF' },
-        { status: 400 }
-      )
-    }
+    let buffer: Buffer
+    let pdfName: string
 
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
+    if (blobUrl && typeof blobUrl === 'string') {
+      // Fetch from Blob storage
+      const fileName = formData.get('fileName')
+      if (!fileName || typeof fileName !== 'string') {
+        return NextResponse.json(
+          { error: 'Nome file richiesto quando si usa blob storage' },
+          { status: 400 }
+        )
+      }
+
+      pdfName = fileName
+
+      try {
+        const response = await fetch(blobUrl)
+        if (!response.ok) {
+          throw new Error('Failed to fetch blob')
+        }
+        const arrayBuffer = await response.arrayBuffer()
+        buffer = Buffer.from(arrayBuffer)
+
+        // Clean up blob after fetching
+        await del(blobUrl)
+      } catch (error) {
+        console.error('Error fetching blob:', error)
+        return NextResponse.json(
+          { error: 'Errore nel recupero del file' },
+          { status: 500 }
+        )
+      }
+    } else if (file && file instanceof File) {
+      // Direct file upload (for small files)
+      // Validate file type
+      if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+        return NextResponse.json(
+          { error: 'Il file deve essere un PDF' },
+          { status: 400 }
+        )
+      }
+
+      // Validate file size
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: 'Il file supera la dimensione massima di 2GB' },
+          { status: 400 }
+        )
+      }
+
+      pdfName = file.name
+      const arrayBuffer = await file.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
+    } else {
       return NextResponse.json(
-        { error: 'Il file supera la dimensione massima di 2GB' },
+        { error: 'File PDF o blob URL richiesto' },
         { status: 400 }
       )
     }
@@ -102,10 +144,6 @@ export async function POST(
       }
       excludePages = parseResult.pages
     }
-
-    // Read the file content
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
 
     // Extract text from PDF
     let pages
@@ -147,7 +185,6 @@ export async function POST(
     }
 
     // Create a title from the PDF filename
-    const pdfName = file.name
     const title = pdfName.replace(/\.pdf$/i, '')
 
     // Get current user session (if logged in)
