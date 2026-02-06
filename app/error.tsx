@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui";
@@ -15,7 +15,7 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4 dark:from-gray-900 dark:to-gray-950">
+    <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center page-shell px-4">
       <div className="text-center">
         {/* Error Icon */}
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -37,12 +37,12 @@ export default function Error({ error, reset }: ErrorProps) {
 
         {/* Title */}
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
-          Si è verificato un errore
+          Si Ã¨ verificato un errore
         </h1>
 
         {/* Description */}
         <p className="mt-4 max-w-md text-gray-600 dark:text-gray-400">
-          Qualcosa è andato storto. Riprova o torna alla homepage.
+          Qualcosa Ã¨ andato storto. Riprova o torna alla homepage.
         </p>
 
         {/* Action Buttons */}
@@ -62,3 +62,4 @@ export default function Error({ error, reset }: ErrorProps) {
     </div>
   );
 }
+

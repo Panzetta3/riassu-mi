@@ -48,7 +48,7 @@ export default function QuizGeneratePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+      <div className="min-h-screen page-shell px-4 py-12">
         <div className="mx-auto max-w-md">
           <div className="rounded-xl bg-white p-8 shadow-sm dark:bg-gray-800">
             <div className="mb-4 flex justify-center">
@@ -99,7 +99,7 @@ export default function QuizGeneratePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-md">
         <div className="rounded-xl bg-white p-8 shadow-sm dark:bg-gray-800">
           <div className="flex flex-col items-center justify-center space-y-6">

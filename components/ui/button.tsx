@@ -10,17 +10,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300",
+    "bg-[linear-gradient(135deg,var(--brand),color-mix(in_oklab,var(--brand)_70%,black))] text-white shadow-[0_10px_24px_rgba(17,46,39,0.2)] border border-white/20 hover:translate-y-[-1px] hover:shadow-[0_14px_30px_rgba(17,46,39,0.25)]",
   secondary:
-    "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600",
+    "bg-[color:var(--card)] text-[color:var(--ink)] border border-[color:var(--border)] hover:bg-[color:var(--surface-2)] hover:border-[color:color-mix(in_oklab,var(--brand)_30%,var(--border))]",
   ghost:
-    "bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500 dark:text-gray-300 dark:hover:bg-gray-800",
+    "bg-transparent text-[color:var(--ink)] hover:bg-[color:color-mix(in_oklab,var(--brand)_12%,transparent)]",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = "primary", className = "", children, disabled, ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed";
+      "inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold tracking-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] disabled:cursor-not-allowed disabled:opacity-60";
 
     return (
       <button

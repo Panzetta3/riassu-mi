@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -64,7 +64,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+      <div className="flex min-h-screen items-center justify-center page-shell">
         <Spinner size="lg" />
       </div>
     );
@@ -81,7 +81,7 @@ export default function ProfilePage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-md">
         {/* Back link */}
         <Link
@@ -300,3 +300,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

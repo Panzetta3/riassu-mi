@@ -37,14 +37,14 @@ export function Header({ user }: HeaderProps) {
   };
 
   return (
-    <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+    <header className="glass-nav sticky top-0 z-40">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
         {/* Logo */}
         <Link
           href="/"
-          className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white"
+          className="text-2xl font-semibold tracking-tight text-[color:var(--ink)]"
         >
-          Riassu<span className="text-blue-600">.mi</span>
+          Riassu<span className="text-gradient">.mi</span>
         </Link>
 
         {/* Navigation */}
@@ -53,13 +53,13 @@ export function Header({ user }: HeaderProps) {
             <>
               <Link
                 href="/dashboard"
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                className="text-sm font-medium text-[color:var(--muted)] transition hover:text-[color:var(--ink)]"
               >
                 Dashboard
               </Link>
               <Link
                 href="/profile"
-                className="flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                className="chip flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -70,7 +70,7 @@ export function Header({ user }: HeaderProps) {
                 variant="ghost"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                className="text-sm font-medium"
               >
                 {isLoggingOut ? "Uscita..." : "Esci"}
               </Button>

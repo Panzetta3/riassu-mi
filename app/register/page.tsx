@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
@@ -21,7 +21,7 @@ function validateForm(
 
   // Validate email
   if (!email) {
-    errors.email = "L'email è obbligatoria";
+    errors.email = "L'email Ã¨ obbligatoria";
   } else {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -31,7 +31,7 @@ function validateForm(
 
   // Validate password
   if (!password) {
-    errors.password = "La password è obbligatoria";
+    errors.password = "La password Ã¨ obbligatoria";
   } else if (password.length < 8) {
     errors.password = "La password deve contenere almeno 8 caratteri";
   }
@@ -91,7 +91,7 @@ export default function RegisterPage() {
       // Redirect to login page on success
       router.push("/login?registered=true");
     } catch {
-      const errorMsg = "Errore di connessione. Riprova più tardi.";
+      const errorMsg = "Errore di connessione. Riprova piÃ¹ tardi.";
       setApiError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -100,7 +100,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-md">
         {/* Back link */}
         <Link
@@ -247,7 +247,7 @@ export default function RegisterPage() {
 
             {/* Login link */}
             <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-              Hai già un account?{" "}
+              Hai giÃ  un account?{" "}
               <Link
                 href="/login"
                 className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
@@ -261,3 +261,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

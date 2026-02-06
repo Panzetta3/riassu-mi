@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+﻿import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { decryptKey } from "@/lib/api-keys";
@@ -22,7 +22,7 @@ export default async function AdminApiKeysPage() {
 
   if (!adminEmail) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4 dark:from-gray-900 dark:to-gray-950">
+      <div className="flex min-h-screen items-center justify-center page-shell px-4">
         <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
@@ -62,7 +62,7 @@ export default async function AdminApiKeysPage() {
   // Check if user is admin
   if (session.email.toLowerCase() !== adminEmail.toLowerCase()) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4 dark:from-gray-900 dark:to-gray-950">
+      <div className="flex min-h-screen items-center justify-center page-shell px-4">
         <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -84,7 +84,7 @@ export default async function AdminApiKeysPage() {
               Accesso negato
             </h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Questa pagina è riservata agli amministratori.
+              Questa pagina Ã¨ riservata agli amministratori.
             </p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default async function AdminApiKeysPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-4xl">
         {/* Header */}
         <div className="mb-8">
@@ -137,3 +137,4 @@ export default async function AdminApiKeysPage() {
     </div>
   );
 }
+

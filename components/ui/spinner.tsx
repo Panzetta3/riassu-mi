@@ -25,7 +25,7 @@ const Spinner = forwardRef<HTMLDivElement, SpinnerProps>(
         {...props}
       >
         <div
-          className={`${sizeStyles[size]} rounded-full border-blue-600 border-t-transparent animate-spin`}
+          className={`${sizeStyles[size]} rounded-full border-[color:var(--brand)] border-t-transparent animate-spin`}
         />
         <span className="sr-only">Loading...</span>
       </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
@@ -173,7 +173,7 @@ export default function UploadPage() {
         const text = await extractTextFromImage(file, setOcrProgress);
 
         if (!text.trim()) {
-          setError("Nessun testo rilevato nell'immagine. Riprova con un'immagine più chiara.");
+          setError("Nessun testo rilevato nell'immagine. Riprova con un'immagine piÃ¹ chiara.");
           setSelectedFile(null);
           setFileType(null);
           setExtractedText(null);
@@ -225,7 +225,7 @@ export default function UploadPage() {
         const text = await extractTextFromTxt(file);
 
         if (!text.trim()) {
-          setError("Il file di testo è vuoto.");
+          setError("Il file di testo Ã¨ vuoto.");
           setSelectedFile(null);
           setFileType(null);
           setExtractedText(null);
@@ -353,7 +353,7 @@ export default function UploadPage() {
     (fileType === "pdf" || ((fileType === "image" || fileType === "word" || fileType === "text") && extractedText));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-2xl">
         {/* Back link */}
         <Link
@@ -539,3 +539,4 @@ export default function UploadPage() {
     </div>
   );
 }
+

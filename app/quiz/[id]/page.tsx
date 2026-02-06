@@ -35,7 +35,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-2xl">
         <QuizInterface
           quizId={quiz.id}

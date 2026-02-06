@@ -49,29 +49,29 @@ export function DetailLevelSelector({
             type="button"
             onClick={() => onChange(option.value)}
             disabled={disabled}
-            className={`rounded-lg border-2 p-3 text-left transition-all ${
+            className={`rounded-2xl border-2 p-4 text-left transition-all ${
               value === option.value
-                ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900/30"
-                : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
+                ? "border-[color:var(--brand)] bg-[color:color-mix(in_oklab,var(--brand)_12%,transparent)]"
+                : "border-[color:var(--border)] bg-[color:var(--card)] hover:border-[color:color-mix(in_oklab,var(--brand)_30%,var(--border))]"
             } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
           >
             <div className="flex items-center gap-2">
               <div
                 className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${
                   value === option.value
-                    ? "border-blue-500 dark:border-blue-400"
-                    : "border-gray-400 dark:border-gray-500"
+                    ? "border-[color:var(--brand)]"
+                    : "border-[color:var(--border)]"
                 }`}
               >
                 {value === option.value && (
-                  <div className="h-2 w-2 rounded-full bg-blue-500 dark:bg-blue-400" />
+                  <div className="h-2 w-2 rounded-full bg-[color:var(--brand)]" />
                 )}
               </div>
               <span
                 className={`font-medium ${
                   value === option.value
-                    ? "text-blue-700 dark:text-blue-300"
-                    : "text-gray-900 dark:text-gray-100"
+                    ? "text-[color:var(--brand)]"
+                    : "text-[color:var(--ink)]"
                 }`}
               >
                 {option.label}
@@ -80,8 +80,8 @@ export function DetailLevelSelector({
             <p
               className={`mt-1 text-xs ${
                 value === option.value
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-500 dark:text-gray-400"
+                  ? "text-[color:var(--brand)]"
+                  : "text-[color:var(--muted)]"
               }`}
             >
               {option.description}

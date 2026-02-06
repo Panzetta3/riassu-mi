@@ -1,9 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { Button } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4 dark:from-gray-900 dark:to-gray-950">
+    <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center page-shell px-4">
       <div className="text-center">
         {/* 404 Icon */}
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
@@ -35,7 +35,7 @@ export default function NotFound() {
 
         {/* Description */}
         <p className="mt-4 max-w-md text-gray-600 dark:text-gray-400">
-          La pagina che stai cercando non esiste o è stata spostata.
+          La pagina che stai cercando non esiste o Ã¨ stata spostata.
         </p>
 
         {/* Action Button */}
@@ -50,3 +50,4 @@ export default function NotFound() {
     </div>
   );
 }
+

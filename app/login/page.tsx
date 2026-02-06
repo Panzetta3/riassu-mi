@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, FormEvent, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -17,7 +17,7 @@ function validateForm(email: string, password: string): FormErrors {
 
   // Validate email
   if (!email) {
-    errors.email = "L'email è obbligatoria";
+    errors.email = "L'email Ã¨ obbligatoria";
   } else {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -27,7 +27,7 @@ function validateForm(email: string, password: string): FormErrors {
 
   // Validate password
   if (!password) {
-    errors.password = "La password è obbligatoria";
+    errors.password = "La password Ã¨ obbligatoria";
   }
 
   return errors;
@@ -57,15 +57,15 @@ function LoginForm() {
     } else if (verified === "success") {
       toast.success("Email verificata con successo! Ora puoi accedere.");
     } else if (verified === "already") {
-      toast.success("Email già verificata. Puoi accedere.");
+      toast.success("Email giÃ  verificata. Puoi accedere.");
     } else if (error === "missing_token") {
       toast.error("Link di verifica non valido.");
     } else if (error === "invalid_token") {
-      toast.error("Link di verifica non valido o già utilizzato.");
+      toast.error("Link di verifica non valido o giÃ  utilizzato.");
     } else if (error === "token_expired") {
-      toast.error("Il link di verifica è scaduto. Registrati di nuovo.");
+      toast.error("Il link di verifica Ã¨ scaduto. Registrati di nuovo.");
     } else if (error === "verification_failed") {
-      toast.error("Errore durante la verifica. Riprova più tardi.");
+      toast.error("Errore durante la verifica. Riprova piÃ¹ tardi.");
     } else if (error === "email_not_verified") {
       toast.warning("Verifica la tua email prima di accedere.");
     }
@@ -124,7 +124,7 @@ function LoginForm() {
       router.push("/dashboard");
       router.refresh();
     } catch {
-      const errorMsg = "Errore di connessione. Riprova più tardi.";
+      const errorMsg = "Errore di connessione. Riprova piÃ¹ tardi.";
       setApiError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -133,7 +133,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-12 dark:from-gray-900 dark:to-gray-950">
+    <div className="min-h-screen page-shell px-4 py-12">
       <div className="mx-auto max-w-md">
         {/* Back link */}
         <Link
@@ -328,7 +328,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-950">
+        <div className="flex min-h-screen items-center justify-center page-shell">
           <Spinner size="lg" />
         </div>
       }
@@ -337,3 +337,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
