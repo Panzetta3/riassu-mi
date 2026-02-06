@@ -303,10 +303,11 @@ export default function UploadPage() {
 
             console.log("Starting blob upload for file:", selectedFile.name, "size:", selectedFile.size);
 
-            const blob = await upload(selectedFile.name, selectedFile, {
+            // Add timestamp to filename to avoid collisions
+            const uniqueName = `${Date.now()}-${selectedFile.name}`;
+            const blob = await upload(uniqueName, selectedFile, {
               access: "public",
               handleUploadUrl: "/api/upload-blob",
-              addRandomSuffix: true,
             });
 
             console.log("Blob upload successful:", blob.url);
