@@ -20,9 +20,6 @@ const plexMono = IBM_Plex_Mono({
   weight: ["400", "600"],
 });
 
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Riassu.mi - Riassunti PDF con AI",
   description: "Trasforma i tuoi PDF di studio in riassunti intelligenti e quiz di verifica. Powered by AI.",
