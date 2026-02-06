@@ -543,8 +543,12 @@ function parseQuizResponse(response: string): QuizQuestion[] {
       }
 
       if (q.type === 'multiple_choice') {
-        if (!Array.isArray(q.options) || q.options.length !== 4) {
-          throw new Error(`Question ${index + 1} (multiple_choice) must have exactly 4 options`)
+        if (!Array.isArray(q.options) || q.options.length < 2) {
+          throw new Error(`Question ${index + 1} (multiple_choice) must have at least 2 options`)
+        }
+        // Trim to 4 options max if AI generated more
+        if (q.options.length > 4) {
+          q.options = q.options.slice(0, 4)
         }
 
         // Verify correctAnswer is in options
