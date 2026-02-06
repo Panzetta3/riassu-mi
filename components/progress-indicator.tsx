@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Spinner } from "@/components/ui";
 
 export type ProgressStage =
+  | "uploading"    // Uploading to storage
   | "analyzing"    // Analyzing PDF
   | "generating"   // Generating summary
   | "chunking"     // Processing chunks (for long PDFs)
@@ -19,6 +20,7 @@ interface ProgressIndicatorProps {
 }
 
 const stageMessages: Record<ProgressStage, string> = {
+  uploading: "Caricamento file...",
   analyzing: "Analizzando il documento...",
   generating: "Generando riassunto...",
   chunking: "Elaborando il documento...",
@@ -26,6 +28,7 @@ const stageMessages: Record<ProgressStage, string> = {
 };
 
 const stageDescriptions: Record<ProgressStage, string> = {
+  uploading: "Caricamento del file in corso",
   analyzing: "Estrazione del testo dal documento",
   generating: "L'intelligenza artificiale sta creando il tuo riassunto",
   chunking: "Il documento viene elaborato in parti per una migliore analisi",
@@ -84,7 +87,10 @@ export function ProgressIndicator({ stage, chunkProgress, pageCount }: ProgressI
     estimatedTotal = groups * SECONDS_PER_GROUP;
 
     // Progress based on stage
-    if (stage === "analyzing") {
+    if (stage === "uploading") {
+      progressPercent = 2;
+      estimatedRemaining = estimatedTotal + 5;
+    } else if (stage === "analyzing") {
       progressPercent = 5;
       estimatedRemaining = estimatedTotal;
     } else if (stage === "generating") {
@@ -96,7 +102,8 @@ export function ProgressIndicator({ stage, chunkProgress, pageCount }: ProgressI
     }
   } else {
     // Default progress based on stage
-    if (stage === "analyzing") progressPercent = 10;
+    if (stage === "uploading") progressPercent = 2;
+    else if (stage === "analyzing") progressPercent = 10;
     else if (stage === "generating") progressPercent = 50;
     else if (stage === "saving") progressPercent = 95;
   }
