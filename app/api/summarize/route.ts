@@ -17,7 +17,6 @@ const VALID_DETAIL_LEVELS: DetailLevel[] = ['brief', 'medium', 'detailed']
 
 interface SummarizeResponse {
   summaryId: string
-  content: string
 }
 
 interface ErrorResponse {
@@ -35,7 +34,7 @@ interface ErrorResponse {
  * - detailLevel: "brief" | "medium" | "detailed" (required)
  *
  * Response:
- * - 200: { summaryId: string, content: string }
+ * - 200: { summaryId: string }
  * - 400: { error: string } - Invalid request
  * - 500: { error: string } - Server error
  */
@@ -171,8 +170,7 @@ export async function POST(
     })
 
     return NextResponse.json({
-      summaryId: summary.id,
-      content: summaryContent
+      summaryId: summary.id
     })
 
   } catch (error) {
