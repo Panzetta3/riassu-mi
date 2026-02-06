@@ -306,6 +306,7 @@ export default function UploadPage() {
             const blob = await upload(selectedFile.name, selectedFile, {
               access: "public",
               handleUploadUrl: "/api/upload-blob",
+              addRandomSuffix: true,
             });
 
             console.log("Blob upload successful:", blob.url);
