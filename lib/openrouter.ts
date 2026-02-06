@@ -410,25 +410,32 @@ REGOLE IMPORTANTI:
 6. Le opzioni errate devono essere plausibili ma chiaramente sbagliate
 7. Ogni domanda deve avere una spiegazione chiara della risposta corretta
 
+ATTENZIONE SULLE DOMANDE VERO/FALSO:
+- Le domande vero/falso devono essere AFFERMAZIONI (frasi dichiarative), NON domande.
+- CORRETTO: "La Divina Commedia è composta da tre cantiche." (affermazione)
+- SBAGLIATO: "La Commedia di Dante è strutturata in quante cantiche?" (questa è una domanda, NON usare questo formato)
+- L'utente deve poter rispondere semplicemente "Vero" o "Falso" all'affermazione.
+
 Rispondi SOLO con un array JSON valido, senza testo aggiuntivo.
 Il formato deve essere esattamente questo:
 [
   {
-    "question": "testo della domanda",
+    "question": "testo della domanda con punto interrogativo?",
     "type": "multiple_choice",
     "options": ["opzione A", "opzione B", "opzione C", "opzione D"],
     "correctAnswer": "opzione corretta esatta",
     "explanation": "spiegazione del perché questa è la risposta corretta"
   },
   {
-    "question": "affermazione da valutare",
+    "question": "Affermazione dichiarativa da valutare come vera o falsa.",
     "type": "true_false",
-    "correctAnswer": "Vero" o "Falso",
+    "correctAnswer": "Vero",
     "explanation": "spiegazione del perché l'affermazione è vera o falsa"
   }
 ]
 
 IMPORTANTE:
+- Per le domande true_false, il campo "question" DEVE essere un'AFFERMAZIONE (frase dichiarativa con il punto), MAI una domanda
 - Per le domande true_false, NON includere il campo "options"
 - Il campo correctAnswer per true_false deve essere esattamente "Vero" o "Falso"
 - Il campo correctAnswer per multiple_choice deve corrispondere esattamente a una delle opzioni`
