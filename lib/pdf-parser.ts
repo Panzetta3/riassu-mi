@@ -1,11 +1,5 @@
-import * as pdfjsLib from 'pdfjs-dist'
-import Tesseract from 'tesseract.js'
-
-// Set worker path for pdf.js
-if (typeof window === 'undefined') {
-  // Server-side
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-}
+// Use legacy build for Node.js (no worker needed)
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 export interface PageText {
   pageNumber: number
