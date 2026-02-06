@@ -1,5 +1,5 @@
-// Use legacy build for Node.js (no worker needed)
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+// @ts-expect-error - pdf-parse v1 doesn't have types
+import pdfParse from 'pdf-parse'
 
 export interface PageText {
   pageNumber: number
@@ -19,22 +19,8 @@ export class PDFExtractionError extends Error {
 }
 
 /**
- * Extract text from PDF pages using OCR (Tesseract.js)
- * For scanned PDFs without embedded text
- */
-async function extractTextWithOCR(
-  buffer: Buffer | Uint8Array,
-  pagesToParse: number[]
-): Promise<PageText[]> {
-  // For now, we'll skip OCR on server-side as it's too heavy
-  // OCR should be done client-side for images
-  console.log('OCR extraction not implemented for server-side PDFs')
-  return []
-}
-
-/**
- * Extracts text from a PDF buffer using pdf.js, returning an array of { pageNumber, text } for each page.
- * Supports excluding specific pages via the excludePages parameter.
+ * Extracts text from a PDF buffer using pdf-parse v1 (serverless compatible).
+ * Returns an array of { pageNumber, text } for each page.
  *
  * @param buffer - The PDF file as a Buffer or Uint8Array
  * @param excludePages - Optional array of page numbers to exclude (1-indexed)
@@ -45,75 +31,59 @@ export async function extractText(
   buffer: Buffer | Uint8Array,
   excludePages?: number[]
 ): Promise<PageText[]> {
-  const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
+  const data = buffer instanceof Buffer ? buffer : Buffer.from(buffer)
 
   try {
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({
-      data,
-      useSystemFonts: true,
-      standardFontDataUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/standard_fonts/`,
+    // pdf-parse v1 extracts all text and gives page count
+    // We use the pagerender option to get text per page
+    const pages: PageText[] = []
+    const excludeSet = new Set(excludePages || [])
+
+    const result = await pdfParse(data, {
+      // Custom page render function to capture text per page
+      pagerender: async (pageData: any) => {
+        const textContent = await pageData.getTextContent()
+        const text = textContent.items
+          .map((item: any) => item.str)
+          .join(' ')
+          .trim()
+        return text
+      }
     })
 
-    const pdfDocument = await loadingTask.promise
-
-    const totalPages = pdfDocument.numPages
+    // pdf-parse returns all text joined, but we need per-page
+    // Re-parse to get individual pages
+    const totalPages = result.numpages
 
     if (totalPages === 0) {
       throw new PDFExtractionError('PDF document has no pages')
     }
 
-    // Calculate which pages to include (all pages minus excluded ones)
-    const excludeSet = new Set(excludePages || [])
-    const pagesToParse: number[] = []
-
-    for (let i = 1; i <= totalPages; i++) {
-      if (!excludeSet.has(i)) {
-        pagesToParse.push(i)
-      }
-    }
-
-    if (pagesToParse.length === 0) {
-      throw new PDFExtractionError('All pages were excluded from extraction')
-    }
-
-    // Extract text from each page
-    const pages: PageText[] = []
-
-    for (const pageNum of pagesToParse) {
-      try {
-        const page = await pdfDocument.getPage(pageNum)
-        const textContent = await page.getTextContent()
-
-        // Combine all text items into a single string
-        const pageText = textContent.items
-          .map((item: any) => {
-            if ('str' in item) {
-              return item.str
-            }
-            return ''
-          })
+    // Parse again with page tracking
+    let currentPage = 0
+    await pdfParse(data, {
+      pagerender: async (pageData: any) => {
+        currentPage++
+        if (excludeSet.has(currentPage)) {
+          return '' // Skip excluded pages
+        }
+        const textContent = await pageData.getTextContent()
+        const text = textContent.items
+          .map((item: any) => item.str)
           .join(' ')
           .trim()
-
         pages.push({
-          pageNumber: pageNum,
-          text: pageText
+          pageNumber: currentPage,
+          text
         })
-
-        // Clean up page resources
-        page.cleanup()
-      } catch (error) {
-        console.error(`Failed to extract text from page ${pageNum}:`, error)
-        pages.push({
-          pageNumber: pageNum,
-          text: ''
-        })
+        return text
       }
-    }
+    })
 
-    // Clean up document
-    await pdfDocument.destroy()
+    // Check if we have any pages to process
+    if (pages.length === 0) {
+      throw new PDFExtractionError('All pages were excluded from extraction')
+    }
 
     // Check if any extractable text was found
     const hasText = pages.some(page => page.text.length > 0)
@@ -139,88 +109,17 @@ export async function extractText(
 
 /**
  * Extracts text from a PDF buffer and returns both the pages and total page count.
- * This is useful when you need to know how many pages were in the original document.
- *
- * @param buffer - The PDF file as a Buffer or Uint8Array
- * @param excludePages - Optional array of page numbers to exclude (1-indexed)
- * @returns Object with pages array and totalPages count
  */
 export async function extractTextWithInfo(
   buffer: Buffer | Uint8Array,
   excludePages?: number[]
 ): Promise<ExtractTextResult> {
-  const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
+  const data = buffer instanceof Buffer ? buffer : Buffer.from(buffer)
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data,
-      useSystemFonts: true,
-      standardFontDataUrl: `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/standard_fonts/`,
-    })
-
-    const pdfDocument = await loadingTask.promise
-    const totalPages = pdfDocument.numPages
-
-    if (totalPages === 0) {
-      await pdfDocument.destroy()
-      throw new PDFExtractionError('PDF document has no pages')
-    }
-
-    const excludeSet = new Set(excludePages || [])
-    const pagesToParse: number[] = []
-
-    for (let i = 1; i <= totalPages; i++) {
-      if (!excludeSet.has(i)) {
-        pagesToParse.push(i)
-      }
-    }
-
-    if (pagesToParse.length === 0) {
-      await pdfDocument.destroy()
-      throw new PDFExtractionError('All pages were excluded from extraction')
-    }
-
-    const pages: PageText[] = []
-
-    for (const pageNum of pagesToParse) {
-      try {
-        const page = await pdfDocument.getPage(pageNum)
-        const textContent = await page.getTextContent()
-
-        const pageText = textContent.items
-          .map((item: any) => {
-            if ('str' in item) {
-              return item.str
-            }
-            return ''
-          })
-          .join(' ')
-          .trim()
-
-        pages.push({
-          pageNumber: pageNum,
-          text: pageText
-        })
-
-        page.cleanup()
-      } catch (error) {
-        console.error(`Failed to extract text from page ${pageNum}:`, error)
-        pages.push({
-          pageNumber: pageNum,
-          text: ''
-        })
-      }
-    }
-
-    await pdfDocument.destroy()
-
-    const hasText = pages.some(page => page.text.length > 0)
-
-    if (!hasText) {
-      throw new PDFExtractionError(
-        'Il PDF non contiene testo estraibile. Potrebbe essere un documento scansionato o protetto.'
-      )
-    }
+    const result = await pdfParse(data)
+    const totalPages = result.numpages
+    const pages = await extractText(buffer, excludePages)
 
     return {
       pages,
@@ -240,25 +139,13 @@ export async function extractTextWithInfo(
 
 /**
  * Gets the total number of pages in a PDF without extracting text.
- *
- * @param buffer - The PDF file as a Buffer or Uint8Array
- * @returns The total number of pages
  */
 export async function getPageCount(buffer: Buffer | Uint8Array): Promise<number> {
-  const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer
+  const data = buffer instanceof Buffer ? buffer : Buffer.from(buffer)
 
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data,
-      useSystemFonts: true,
-    })
-
-    const pdfDocument = await loadingTask.promise
-    const totalPages = pdfDocument.numPages
-
-    await pdfDocument.destroy()
-
-    return totalPages
+    const result = await pdfParse(data)
+    return result.numpages
   } catch (error) {
     console.error('Error getting page count:', error)
     throw new PDFExtractionError(
