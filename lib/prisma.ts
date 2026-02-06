@@ -1,66 +1,9 @@
 import { PrismaClient } from './generated/prisma/client'
-import { PrismaNeon } from '@prisma/adapter-neon'
-import { Pool, neonConfig } from '@neondatabase/serverless'
-import ws from 'ws'
-
-// Configure WebSocket for Vercel serverless
-if (typeof WebSocket === 'undefined') {
-  neonConfig.webSocketConstructor = ws
-}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-function createPrismaClient() {
-  // Try different environment variable names that Vercel might use
-  const connectionString =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.DATABASE_PRISMA_URL
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
-  if (!connectionString) {
-    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('DATABASE') || k.includes('POSTGRES')))
-    throw new Error('DATABASE_URL environment variable is not set')
-  }
-
-  console.log('Creating Prisma client with connection string:', connectionString.substring(0, 30) + '...')
-
-  // Parse connection string into config object for Neon Pool
-  const url = new URL(connectionString)
-  const poolConfig = {
-    host: url.hostname,
-    port: parseInt(url.port) || 5432,
-    user: url.username,
-    password: url.password,
-    database: url.pathname.slice(1), // Remove leading slash
-    ssl: true,
-  }
-
-  console.log('Pool config:', { host: poolConfig.host, database: poolConfig.database })
-
-  const pool = new Pool(poolConfig)
-  console.log('Pool created successfully')
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaNeon(pool as any)
-  console.log('Adapter created successfully')
-
-  return new PrismaClient({ adapter })
-}
-
-// Lazy initialization - create client only when first accessed
-function getPrismaClient() {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createPrismaClient()
-  }
-  return globalForPrisma.prisma
-}
-
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, prop) {
-    const client = getPrismaClient()
-    return client[prop as keyof PrismaClient]
-  },
-})
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
