@@ -1,38 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { NextResponse } from 'next/server'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 
 export const dynamic = 'force-dynamic'
 
-// Vercel Hobby plan: 4.5MB request limit
-// This endpoint uploads to Blob storage which supports larger files
-export async function POST(request: NextRequest) {
+/**
+ * Client upload endpoint - generates a token for client-side uploads
+ * This allows files larger than 4.5MB to be uploaded directly from the browser to Blob
+ */
+export async function POST(request: Request): Promise<NextResponse> {
+  const body = (await request.json()) as HandleUploadBody
+
   try {
-    const formData = await request.formData()
-    const file = formData.get('file')
-
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json(
-        { error: 'File richiesto' },
-        { status: 400 }
-      )
-    }
-
-    // Upload to Vercel Blob with a unique name
-    const blob = await put(file.name, file, {
-      access: 'public',
-      addRandomSuffix: true,
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname: string) => {
+        // You can add auth checks here if needed
+        return {
+          allowedContentTypes: ['application/pdf'],
+          tokenPayload: JSON.stringify({}),
+        }
+      },
+      onUploadCompleted: async () => {
+        // Optional: do something after upload completes
+      },
     })
 
-    return NextResponse.json({
-      url: blob.url,
-      pathname: blob.pathname,
-      downloadUrl: blob.downloadUrl,
-    })
+    return NextResponse.json(jsonResponse)
   } catch (error) {
     console.error('Blob upload error:', error)
     return NextResponse.json(
-      { error: 'Errore durante l\'upload del file' },
-      { status: 500 }
+      { error: (error as Error).message },
+      { status: 400 }
     )
   }
 }
