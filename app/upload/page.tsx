@@ -297,17 +297,26 @@ export default function UploadPage() {
           // Large file: upload to Blob storage using client-side upload
           setProgressStage("uploading");
 
-          // Client-side upload to Blob
-          const { upload } = await import("@vercel/blob/client");
+          try {
+            // Client-side upload to Blob
+            const { upload } = await import("@vercel/blob/client");
 
-          const blob = await upload(selectedFile.name, selectedFile, {
-            access: "public",
-            handleUploadUrl: "/api/upload-blob",
-          });
+            console.log("Starting blob upload for file:", selectedFile.name, "size:", selectedFile.size);
 
-          // Now send the blob URL to summarize API
-          formData.append("blobUrl", blob.url);
-          formData.append("fileName", selectedFile.name);
+            const blob = await upload(selectedFile.name, selectedFile, {
+              access: "public",
+              handleUploadUrl: "/api/upload-blob",
+            });
+
+            console.log("Blob upload successful:", blob.url);
+
+            // Now send the blob URL to summarize API
+            formData.append("blobUrl", blob.url);
+            formData.append("fileName", selectedFile.name);
+          } catch (uploadError) {
+            console.error("Blob upload failed:", uploadError);
+            throw new Error(`Errore durante l'upload del file: ${uploadError instanceof Error ? uploadError.message : "Errore sconosciuto"}`);
+          }
         } else {
           // Small file: direct upload
           formData.append("file", selectedFile);
