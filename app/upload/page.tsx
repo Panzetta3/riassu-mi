@@ -102,6 +102,7 @@ export default function UploadPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressStage, setProgressStage] = useState<ProgressStage>("analyzing");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [chunkProgress, setChunkProgress] = useState<{current: number, total: number} | undefined>();
 
   // Image OCR state
   const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -289,59 +290,76 @@ export default function UploadPage() {
 
         clearTimeout(stageTimer);
       } else {
-        // For PDFs, check size and upload accordingly
+        // PDF: multi-step flow to avoid serverless timeout
         const FILE_SIZE_LIMIT = 4.5 * 1024 * 1024; // 4.5MB (Vercel limit)
         const formData = new FormData();
 
         if (selectedFile.size > FILE_SIZE_LIMIT) {
-          // Large file: upload to Blob storage using client-side upload
           setProgressStage("uploading");
-
           try {
-            // Client-side upload to Blob
             const { upload } = await import("@vercel/blob/client");
-
-            console.log("Starting blob upload for file:", selectedFile.name, "size:", selectedFile.size);
-
-            // Add timestamp to filename to avoid collisions
             const uniqueName = `${Date.now()}-${selectedFile.name}`;
             const blob = await upload(uniqueName, selectedFile, {
               access: "public",
               handleUploadUrl: "/api/upload-blob",
             });
-
-            console.log("Blob upload successful:", blob.url);
-
-            // Now send the blob URL to summarize API
             formData.append("blobUrl", blob.url);
             formData.append("fileName", selectedFile.name);
           } catch (uploadError) {
-            console.error("Blob upload failed:", uploadError);
             throw new Error(`Errore durante l'upload del file: ${uploadError instanceof Error ? uploadError.message : "Errore sconosciuto"}`);
           }
         } else {
-          // Small file: direct upload
           formData.append("file", selectedFile);
         }
 
-        formData.append("detailLevel", detailLevel);
         if (excludePagesInput.trim()) {
           formData.append("excludePages", excludePagesInput);
         }
 
-        const stageTimer = setTimeout(() => {
-          setProgressStage("generating");
-        }, 1500);
+        // Step 1: Parse PDF to get page groups
+        setProgressStage("analyzing");
+        const parseRes = await fetch("/api/parse-pdf", { method: "POST", body: formData });
+        const parseData = await parseRes.json();
+        if (!parseRes.ok) throw new Error(parseData?.error || "Errore durante l'analisi del PDF");
 
-        response = await fetch("/api/summarize", {
+        const { groups, totalGroups, pdfName } = parseData;
+
+        // Step 2: Summarize each chunk
+        setProgressStage("chunking");
+        const summaries: string[] = [];
+
+        for (let i = 0; i < groups.length; i++) {
+          setChunkProgress({ current: i + 1, total: totalGroups });
+
+          const chunkRes = await fetch("/api/summarize-chunk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: groups[i].text, detailLevel }),
+          });
+          const chunkData = await chunkRes.json();
+          if (!chunkRes.ok) throw new Error(chunkData?.error || `Errore generazione riassunto (parte ${i + 1})`);
+
+          summaries.push(`## \u{1F4C4} ${groups[i].pageRange}\n\n${chunkData.summary}`);
+        }
+
+        // Step 3: Save combined summary
+        setProgressStage("saving");
+        const content = summaries.length === 1 ? summaries[0] : summaries.join('\n\n---\n\n');
+
+        const saveRes = await fetch("/api/save-summary", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, detailLevel, pdfName }),
         });
+        const saveData = await saveRes.json();
+        if (!saveRes.ok) throw new Error(saveData?.error || "Errore nel salvataggio");
 
-        clearTimeout(stageTimer);
+        toast.success("Riassunto generato con successo!");
+        setTimeout(() => { router.push(`/summary/${saveData.summaryId}`); }, 500);
+        return; // PDF flow complete, skip shared text response handling below
       }
 
-      // Check if response has content before parsing JSON
+      // Shared response handling (text/image/word path only)
       const contentType = response.headers.get("content-type");
       let data;
 
@@ -364,11 +382,9 @@ export default function UploadPage() {
         throw new Error(data?.error || "Errore durante la generazione del riassunto");
       }
 
-      // Show saving stage briefly before redirect
       setProgressStage("saving");
       toast.success("Riassunto generato con successo!");
 
-      // Redirect to the summary page
       setTimeout(() => {
         router.push(`/summary/${data.summaryId}`);
       }, 500);
@@ -421,7 +437,7 @@ export default function UploadPage() {
           <CardContent className="space-y-6">
             {/* Show Progress Indicator when processing */}
             {isProcessing ? (
-              <ProgressIndicator stage={progressStage} pageCount={pageCount ?? undefined} />
+              <ProgressIndicator stage={progressStage} pageCount={pageCount ?? undefined} chunkProgress={chunkProgress} />
             ) : (
               <>
                 {/* File Upload Component */}
