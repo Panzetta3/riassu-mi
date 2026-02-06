@@ -395,64 +395,92 @@ export async function generateSummaryByPageGroups(
 }
 
 /**
- * System prompt for quiz generation
+ * Prompt for generating ONLY multiple choice questions (call 1 of 2)
  */
-function getQuizSystemPrompt(): string {
+function getMultipleChoicePrompt(summaryContent: string): string {
   return `Sei un assistente specializzato nel creare quiz di verifica dell'apprendimento.
-Il tuo compito è generare domande basate sul contenuto fornito per testare la comprensione dello studente.
+Genera esattamente 7 domande a SCELTA MULTIPLA basate ESCLUSIVAMENTE sul testo fornito.
 
-REGOLE IMPORTANTI:
-1. Genera esattamente 10 domande
-2. Circa 7 domande devono essere a scelta multipla (multiple_choice) con 4 opzioni
-3. Circa 3 domande devono essere vero/falso (true_false)
-4. Le domande devono essere nella stessa lingua del contenuto
-5. Le domande devono coprire i concetti principali del materiale
-6. Le opzioni errate devono essere plausibili ma chiaramente sbagliate
-7. Ogni domanda deve avere una spiegazione chiara della risposta corretta
-
-ATTENZIONE SULLE DOMANDE VERO/FALSO:
-- Le domande vero/falso devono essere AFFERMAZIONI (frasi dichiarative), NON domande.
-- CORRETTO: "La Divina Commedia è composta da tre cantiche." (affermazione)
-- SBAGLIATO: "La Commedia di Dante è strutturata in quante cantiche?" (questa è una domanda, NON usare questo formato)
-- L'utente deve poter rispondere semplicemente "Vero" o "Falso" all'affermazione.
+REGOLE:
+- Genera SOLO domande a scelta multipla (multiple_choice), NESSUN vero/falso
+- Ogni domanda deve avere esattamente 4 opzioni
+- Le domande devono essere nella stessa lingua del testo
+- Le domande devono coprire i concetti principali del materiale
+- Le opzioni errate devono essere plausibili ma chiaramente sbagliate
+- Ogni domanda deve avere una spiegazione chiara della risposta corretta
+- Basa le domande ESCLUSIVAMENTE sul testo fornito, non su conoscenze esterne
 
 Rispondi SOLO con un array JSON valido, senza testo aggiuntivo.
-Il formato deve essere esattamente questo:
+Formato:
 [
   {
-    "question": "testo della domanda con punto interrogativo?",
+    "question": "testo della domanda?",
     "type": "multiple_choice",
     "options": ["opzione A", "opzione B", "opzione C", "opzione D"],
     "correctAnswer": "opzione corretta esatta",
-    "explanation": "spiegazione del perché questa è la risposta corretta"
-  },
-  {
-    "question": "Affermazione dichiarativa da valutare come vera o falsa.",
-    "type": "true_false",
-    "correctAnswer": "Vero",
-    "explanation": "spiegazione del perché l'affermazione è vera o falsa"
+    "explanation": "spiegazione"
   }
 ]
 
-IMPORTANTE:
-- Per le domande true_false, il campo "question" DEVE essere un'AFFERMAZIONE (frase dichiarativa con il punto), MAI una domanda
-- Per le domande true_false, NON includere il campo "options"
-- Il campo correctAnswer per true_false deve essere esattamente "Vero" o "Falso"
-- Il campo correctAnswer per multiple_choice deve corrispondere esattamente a una delle opzioni`
-}
+Il campo correctAnswer DEVE corrispondere esattamente a una delle opzioni.
 
-/**
- * User prompt for quiz generation
- */
-function getQuizUserPrompt(summaryContent: string): string {
-  return `Genera un quiz di 10 domande basato sul seguente riassunto:
-
+TESTO:
 ---
 ${summaryContent}
 ---
 
-Ricorda: genera 7 domande a scelta multipla e 3 domande vero/falso.
-Rispondi SOLO con l'array JSON, senza testo introduttivo o di chiusura.`
+Genera 7 domande a scelta multipla. Rispondi SOLO con l'array JSON.`
+}
+
+/**
+ * Prompt for generating ONLY true/false statements (call 2 of 2)
+ * Receives the already-generated MC questions to avoid repetition.
+ */
+function getTrueFalsePrompt(summaryContent: string, existingQuestions: string[]): string {
+  const questionsContext = existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')
+
+  return `Sei un assistente specializzato nel creare quiz di verifica dell'apprendimento.
+Genera esattamente 3 domande VERO/FALSO basate ESCLUSIVAMENTE sul testo fornito.
+
+REGOLE FONDAMENTALI:
+- Genera SOLO domande vero/falso, NESSUNA scelta multipla
+- Ogni "domanda" DEVE essere un'AFFERMAZIONE DICHIARATIVA (frase con il punto finale), MAI una domanda con il punto interrogativo
+- L'utente deve poter rispondere semplicemente "Vero" o "Falso"
+- Basa le affermazioni ESCLUSIVAMENTE sul testo fornito, non su conoscenze esterne
+- Le affermazioni devono essere nella stessa lingua del testo
+
+ESEMPI CORRETTI:
+- "La fotosintesi avviene nei cloroplasti." (affermazione - si risponde Vero o Falso)
+- "Il DNA è composto da quattro basi azotate." (affermazione - si risponde Vero o Falso)
+- "Roma fu fondata nel 753 a.C." (affermazione - si risponde Vero o Falso)
+
+ESEMPI SBAGLIATI (NON FARE MAI COSI'):
+- "Dove avviene la fotosintesi?" (questa è una DOMANDA, non usare MAI questo formato)
+- "Quante basi azotate ha il DNA?" (questa è una DOMANDA)
+- "Il DNA è composto da quante basi?" (questa è una DOMANDA)
+
+Le seguenti domande sono GIA' STATE FATTE nel quiz. NON ripetere gli stessi argomenti:
+${questionsContext}
+
+Rispondi SOLO con un array JSON valido, senza testo aggiuntivo.
+Formato:
+[
+  {
+    "question": "Affermazione dichiarativa con il punto.",
+    "type": "true_false",
+    "correctAnswer": "Vero",
+    "explanation": "spiegazione del perché è vera o falsa"
+  }
+]
+
+IMPORTANTE: "correctAnswer" deve essere esattamente "Vero" o "Falso". NON includere "options".
+
+TESTO:
+---
+${summaryContent}
+---
+
+Genera 3 affermazioni vero/falso. Rispondi SOLO con l'array JSON.`
 }
 
 /**
@@ -573,27 +601,15 @@ function parseQuizResponse(response: string): QuizQuestion[] {
 }
 
 /**
- * Generates a quiz based on the summary content.
- * Creates 10 questions: ~7 multiple choice (4 options each) and ~3 true/false.
- * Uses the same retry logic as generateSummary.
- *
- * @param summaryContent - The summary content to base the quiz on
- * @returns Array of quiz questions
- * @throws OpenRouterError if API calls fail or response parsing fails
+ * Helper: call OpenRouter with retry and key rotation for quiz generation.
+ * Returns the raw response string.
  */
-export async function generateQuiz(summaryContent: string): Promise<QuizQuestion[]> {
-  const combinedPrompt = `${getQuizSystemPrompt()}
-
-${getQuizUserPrompt(summaryContent)}`
-
-  const messages = [
-    { role: 'user', content: combinedPrompt }
-  ]
+async function callOpenRouterForQuiz(prompt: string): Promise<string> {
+  const messages = [{ role: 'user', content: prompt }]
 
   let lastError: Error | null = null
   const triedKeyIds = new Set<string>()
 
-  // Try up to MAX_KEYS_TO_TRY different API keys
   for (let keyAttempt = 0; keyAttempt < MAX_KEYS_TO_TRY; keyAttempt++) {
     const keyData = await getActiveKeyWithId()
 
@@ -604,55 +620,86 @@ ${getQuizUserPrompt(summaryContent)}`
       )
     }
 
-    // Skip if we already tried this key
-    if (triedKeyIds.has(keyData.id)) {
-      continue
-    }
-
+    if (triedKeyIds.has(keyData.id)) continue
     triedKeyIds.add(keyData.id)
-    console.log(`[Quiz] Trying API key ${keyAttempt + 1}/${MAX_KEYS_TO_TRY}`)
 
-    // Try this key up to RETRIES_PER_KEY times
     for (let retry = 0; retry < RETRIES_PER_KEY; retry++) {
       try {
-        console.log(`  Attempt ${retry + 1}/${RETRIES_PER_KEY}...`)
         const response = await callOpenRouter(keyData.key, messages)
-
-        // Mark the key as successful
         await markKeySuccess(keyData.id)
-
-        // Parse and validate the quiz response
-        const questions = parseQuizResponse(response)
-        return questions
-
+        return response
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
-        // For parsing errors (API worked but returned invalid JSON), retry without changing key
-        if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR') {
-          console.log(`  JSON parse error, retrying...`)
-          if (retry < RETRIES_PER_KEY - 1) {
-            await delay(RETRY_DELAY_MS)
-            continue
-          }
-          break // Move to next key
-        }
-
-        // For API errors
-        console.log(`  Failed: ${lastError.message.slice(0, 100)}`)
-
         if (retry < RETRIES_PER_KEY - 1) {
-          console.log(`  Waiting ${RETRY_DELAY_MS / 1000}s before retry...`)
           await delay(RETRY_DELAY_MS)
           continue
         }
 
-        // All retries failed, mark key as failed and move to next
         await markKeyFailed(keyData.id, true)
         break
       }
     }
   }
 
-  throw lastError || new OpenRouterError('Impossibile generare il quiz dopo diversi tentativi')
+  throw lastError || new OpenRouterError('Impossibile completare la richiesta')
+}
+
+/**
+ * Generates a quiz based on the summary content.
+ * Uses TWO separate AI calls:
+ *   1. Generate 7 multiple choice questions
+ *   2. Generate 3 true/false statements (knowing which MC questions were already asked)
+ * This ensures true/false questions are proper statements, not questions.
+ *
+ * @param summaryContent - The summary content to base the quiz on
+ * @returns Array of quiz questions
+ * @throws OpenRouterError if API calls fail or response parsing fails
+ */
+export async function generateQuiz(summaryContent: string): Promise<QuizQuestion[]> {
+  // Step 1: Generate 7 multiple choice questions
+  console.log('[Quiz] Step 1: Generating 7 multiple choice questions...')
+  const mcPrompt = getMultipleChoicePrompt(summaryContent)
+
+  let mcQuestions: QuizQuestion[] = []
+  for (let attempt = 0; attempt < RETRIES_PER_KEY; attempt++) {
+    try {
+      const mcResponse = await callOpenRouterForQuiz(mcPrompt)
+      mcQuestions = parseQuizResponse(mcResponse)
+      console.log(`[Quiz] Got ${mcQuestions.length} multiple choice questions`)
+      break
+    } catch (error) {
+      if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR' && attempt < RETRIES_PER_KEY - 1) {
+        console.log('[Quiz] MC parse error, retrying...')
+        await delay(RETRY_DELAY_MS)
+        continue
+      }
+      throw error
+    }
+  }
+
+  // Step 2: Generate 3 true/false statements (with MC questions as context)
+  const existingQuestionTexts = mcQuestions.map(q => q.question)
+  console.log('[Quiz] Step 2: Generating 3 true/false statements...')
+  const tfPrompt = getTrueFalsePrompt(summaryContent, existingQuestionTexts)
+
+  let tfQuestions: QuizQuestion[] = []
+  for (let attempt = 0; attempt < RETRIES_PER_KEY; attempt++) {
+    try {
+      const tfResponse = await callOpenRouterForQuiz(tfPrompt)
+      tfQuestions = parseQuizResponse(tfResponse)
+      console.log(`[Quiz] Got ${tfQuestions.length} true/false statements`)
+      break
+    } catch (error) {
+      if (error instanceof OpenRouterError && error.code === 'JSON_PARSE_ERROR' && attempt < RETRIES_PER_KEY - 1) {
+        console.log('[Quiz] T/F parse error, retrying...')
+        await delay(RETRY_DELAY_MS)
+        continue
+      }
+      throw error
+    }
+  }
+
+  // Combine: MC first, then T/F
+  return [...mcQuestions, ...tfQuestions]
 }
