@@ -524,27 +524,37 @@ function parseQuizResponse(response: string): QuizQuestion[] {
       throw new Error('Response is not an array')
     }
 
-    // Validate and normalize each question
-    return questions.map((q, index): QuizQuestion => {
+    // Validate and normalize each question, skipping invalid ones
+    const validQuestions: QuizQuestion[] = []
+
+    for (let index = 0; index < questions.length; index++) {
+      const q = questions[index]
+
+      // Skip questions missing required fields
       if (!q.question || typeof q.question !== 'string') {
-        throw new Error(`Question ${index + 1} is missing the 'question' field`)
+        console.warn(`[Quiz Parse] Skipping question ${index + 1}: missing 'question' field`)
+        continue
       }
 
       if (!q.type || (q.type !== 'multiple_choice' && q.type !== 'true_false')) {
-        throw new Error(`Question ${index + 1} has invalid type: ${q.type}`)
+        console.warn(`[Quiz Parse] Skipping question ${index + 1}: invalid type '${q.type}'`)
+        continue
       }
 
       if (!q.correctAnswer || typeof q.correctAnswer !== 'string') {
-        throw new Error(`Question ${index + 1} is missing the 'correctAnswer' field`)
+        console.warn(`[Quiz Parse] Skipping question ${index + 1}: missing 'correctAnswer'`)
+        continue
       }
 
-      if (!q.explanation || typeof q.explanation !== 'string') {
-        throw new Error(`Question ${index + 1} is missing the 'explanation' field`)
-      }
+      // Default explanation if missing
+      const explanation = (q.explanation && typeof q.explanation === 'string')
+        ? q.explanation
+        : 'Nessuna spiegazione disponibile.'
 
       if (q.type === 'multiple_choice') {
         if (!Array.isArray(q.options) || q.options.length < 2) {
-          throw new Error(`Question ${index + 1} (multiple_choice) must have at least 2 options`)
+          console.warn(`[Quiz Parse] Skipping MC question ${index + 1}: only ${Array.isArray(q.options) ? q.options.length : 0} options`)
+          continue
         }
         // Trim to 4 options max if AI generated more
         if (q.options.length > 4) {
@@ -553,27 +563,27 @@ function parseQuizResponse(response: string): QuizQuestion[] {
 
         // Verify correctAnswer is in options
         if (!q.options.includes(q.correctAnswer)) {
-          // Try to find a close match (case insensitive)
           const matchingOption = q.options.find(
             (opt: string) => opt.toLowerCase().trim() === q.correctAnswer.toLowerCase().trim()
           )
           if (matchingOption) {
             q.correctAnswer = matchingOption
           } else {
-            console.warn(`Question ${index + 1}: correctAnswer "${q.correctAnswer}" not found in options`)
+            // Set correctAnswer to the first option as fallback
+            console.warn(`[Quiz Parse] Question ${index + 1}: correctAnswer not in options, using first option`)
+            q.correctAnswer = q.options[0]
           }
         }
 
-        return {
+        validQuestions.push({
           question: q.question,
           type: 'multiple_choice',
           options: q.options,
           correctAnswer: q.correctAnswer,
-          explanation: q.explanation
-        }
+          explanation
+        })
       } else {
         // true_false
-        // Normalize the answer to "Vero" or "Falso"
         const normalizedAnswer = q.correctAnswer.toLowerCase().trim()
         let correctAnswer: string
 
@@ -582,17 +592,23 @@ function parseQuizResponse(response: string): QuizQuestion[] {
         } else if (normalizedAnswer === 'falso' || normalizedAnswer === 'false' || normalizedAnswer === 'f') {
           correctAnswer = 'Falso'
         } else {
-          correctAnswer = q.correctAnswer // Keep original if not recognized
+          correctAnswer = q.correctAnswer
         }
 
-        return {
+        validQuestions.push({
           question: q.question,
           type: 'true_false',
           correctAnswer,
-          explanation: q.explanation
-        }
+          explanation
+        })
       }
-    })
+    }
+
+    if (validQuestions.length === 0) {
+      throw new Error('Nessuna domanda valida generata dal modello AI')
+    }
+
+    return validQuestions
   } catch (error) {
     if (error instanceof OpenRouterError) {
       throw error
